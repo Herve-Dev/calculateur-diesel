@@ -67,15 +67,15 @@ fun CalculateurScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "${res.montantAAnnoncer} €",
+                        text = String.format(java.util.Locale.FRANCE, "%.2f €", res.montantAAnnoncer),
                         style = MaterialTheme.typography.displayLarge
                     )
                     Text(
-                        text = "${res.litres} L",
+                        text = String.format(java.util.Locale.FRANCE, "%.2f L", res.litres),
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Text(
-                        text = "Économie réalisée : ${res.economie} €",
+                        text = String.format(java.util.Locale.FRANCE, "Économie réalisée : %.2f €", res.economie),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
