@@ -1,13 +1,19 @@
 package com.example.dieselcalculateur.ui.calculateur
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.dieselcalculateur.data.model.CalculResult
 import com.example.dieselcalculateur.data.model.CalculateurLogic
+import com.example.dieselcalculateur.data.repository.CalculRepository
+import com.example.dieselcalculateur.data.local.CalculEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
-class CalculateurViewModel : ViewModel() {
+class CalculateurViewModel(
+    private val repository: CalculRepository
+) : ViewModel() {
 
     private val _montantSouhaite = MutableStateFlow("")
     val montantSouhaite: StateFlow<String> = _montantSouhaite.asStateFlow()
@@ -42,5 +48,23 @@ class CalculateurViewModel : ViewModel() {
             _prixAffiche.value,
             _prixPlafonne.value
         )
+    }
+
+    fun enregistrerCalcul() {
+        val res = _resultat.value
+        if (res is CalculResult.Success) {
+            viewModelScope.launch {
+                val entity = CalculEntity(
+                    date = System.currentTimeMillis(),
+                    montantSouhaite = _montantSouhaite.value.toDoubleOrNull() ?: 0.0,
+                    prixPlafonne = _prixPlafonne.value.toDoubleOrNull() ?: 0.0,
+                    prixAffiche = _prixAffiche.value.toDoubleOrNull() ?: 0.0,
+                    litres = res.litres,
+                    montantAAnnoncer = res.montantAAnnoncer,
+                    economie = res.economie
+                )
+                repository.insererCalcul(entity)
+            }
+        }
     }
 }
