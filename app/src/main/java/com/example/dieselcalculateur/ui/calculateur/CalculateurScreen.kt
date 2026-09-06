@@ -16,7 +16,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.dieselcalculateur.data.local.CalculEntity
 import com.example.dieselcalculateur.data.model.CalculResult
+import com.example.dieselcalculateur.data.model.StationCarburant
 import com.example.dieselcalculateur.ui.calculateur.CalculateurViewModel
+import com.example.dieselcalculateur.ui.stations.LocationPermissionHandler
 import kotlinx.coroutines.delay
 import java.text.DateFormat
 import java.util.Date
@@ -31,7 +33,17 @@ fun CalculateurScreen(
     val prixPlafonne by viewModel.prixPlafonne.collectAsState()
     val resultat by viewModel.resultat.collectAsState()
     val historique by viewModel.historique.collectAsState()
+    val stationsState by viewModel.stationsState.collectAsState()
+
     var confirmationVisible by remember { mutableStateOf(false) }
+    var showPermissionHandler by remember { mutableStateOf(false) }
+
+    if (showPermissionHandler) {
+        LocationPermissionHandler { isGranted ->
+            showPermissionHandler = false
+            viewModel.rechercherStations(isGranted)
+        }
+    }
 
     LaunchedEffect(confirmationVisible) {
         if (confirmationVisible) {
@@ -131,6 +143,62 @@ fun CalculateurScreen(
                 null -> { /* Rien ne s'affiche si aucun calcul n'a été tenté */ }
             }
 
+            // Section Stations Proches
+            Text(
+                text = "Stations à proximité",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+
+            when (val state = stationsState) {
+                is StationsState.Idle -> {
+                    Button(
+                        onClick = { showPermissionHandler = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Trouver les stations autour de moi")
+                    }
+                }
+                is StationsState.Loading -> {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                }
+                is StationsState.Success -> {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 250.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(state.stations, key = { it.id }) { station ->
+                            StationItem(station = station)
+                        }
+                    }
+                    TextButton(
+                        onClick = { showPermissionHandler = true },
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text("Actualiser")
+                    }
+                }
+                is StationsState.Error -> {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(state.message, color = MaterialTheme.colorScheme.error)
+                        Button(onClick = { showPermissionHandler = true }) {
+                            Text("Réessayer")
+                        }
+                    }
+                }
+                is StationsState.PermissionRequired -> {
+                    Text(
+                        "La permission de localisation est nécessaire pour trouver les stations.",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Button(onClick = { showPermissionHandler = true }) {
+                        Text("Accorder la permission")
+                    }
+                }
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -166,6 +234,84 @@ fun CalculateurScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun StationItem(station: StationCarburant) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = station.enseigne ?: "Station",
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = String.format(Locale.FRANCE, "%.2f €/L", station.prixGazole ?: 0.0),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            Text(
+                text = "${station.adresse}, ${station.codePostal ?: ""} ${station.ville ?: ""}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    station.horaires?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                    station.dateMiseAJour?.let {
+                        Text(
+                            text = "MàJ : ${formatDateIso(it)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Text(
+                    text = String.format(Locale.FRANCE, "À %.1f km", station.distanceMetres / 1000.0),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+            }
+        }
+    }
+}
+
+private fun formatDateIso(isoString: String): String {
+    return try {
+        // Format typique API: 2026-09-04T23:51:00+00:00
+        val datePart = isoString.split("T").firstOrNull() ?: isoString
+        val parts = datePart.split("-")
+        if (parts.size == 3) {
+            "${parts[2]}/${parts[1]}/${parts[0]}"
+        } else {
+            datePart
+        }
+    } catch (e: Exception) {
+        isoString
     }
 }
 

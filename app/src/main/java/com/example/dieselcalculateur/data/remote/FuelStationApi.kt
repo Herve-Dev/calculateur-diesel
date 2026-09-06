@@ -1,13 +1,16 @@
 package com.example.dieselcalculateur.data.remote
 
 import retrofit2.http.GET
+import retrofit2.http.Header
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface FuelStationApi {
-    @GET("records")
-    suspend fun getStations(
-        @Query("where") where: String? = "prix_gazole is not null",
-        @Query("limit") limit: Int = 100,
-        @Query("geofilter.distance") geofilterDistance: String? = null
-    ): FuelStationResponse
+    @GET("stations/around/{lat},{lon}")
+    suspend fun getStationsAround(
+        @Path("lat") latitude: Double,
+        @Path("lon") longitude: Double,
+        @Query("responseFields") responseFields: String = "Fuels,Price,Brand,Address",
+        @Header("Accept") accept: String = "application/json"
+    ): List<FuelStationDto>
 }

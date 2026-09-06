@@ -1,22 +1,40 @@
 package com.example.dieselcalculateur.data.remote
 
+import android.util.Log
 import com.example.dieselcalculateur.data.model.StationCarburant
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
-import kotlin.math.*
 
 class FuelStationService {
     private val api: FuelStationApi
 
+    companion object {
+        private val TARGET_BRAND_IDS = setOf(1, 2) // TotalEnergies et TotalEnergies Access
+        private const val FUEL_GAZOLE_ID = 1
+    }
+
     init {
+        val logging = HttpLoggingInterceptor { message ->
+            Log.d("FuelStationHTTP", message)
+        }.apply {
+            level = HttpLoggingInterceptor.Level.BODY
+        }
+
+        val client = OkHttpClient.Builder()
+            .addInterceptor(logging)
+            .build()
+
         val moshi = Moshi.Builder()
             .add(KotlinJsonAdapterFactory())
             .build()
 
         val retrofit = Retrofit.Builder()
-            .baseUrl("https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/")
+            .baseUrl("https://api.prix-carburants.2aaz.fr/")
+            .client(client)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
 
@@ -29,38 +47,38 @@ class FuelStationService {
         radiusMeters: Int
     ): List<StationCarburant> {
         return try {
-            val geofilter = "$latitude,$longitude,$radiusMeters"
-            val response = api.getStations(geofilterDistance = geofilter)
+            val stationsRaw = api.getStationsAround(latitude, longitude)
             
-            response.results.map { dto ->
-                val stationLat = dto.latitude?.toDoubleOrNull() ?: 0.0
-                val stationLon = dto.longitude?.toDoubleOrNull() ?: 0.0
-                val distance = calculateDistance(latitude, longitude, stationLat, stationLon)
+            Log.d("FuelStationService", "Stations reçues avant filtrage: ${stationsRaw.size}")
+            
+            stationsRaw.filter { dto ->
+                val distanceVal = dto.distance?.value ?: Double.MAX_VALUE
+                dto.brand?.id in TARGET_BRAND_IDS && distanceVal <= radiusMeters
+            }.map { dto ->
+                val gazoleFuel = dto.fuels?.find { it.id == FUEL_GAZOLE_ID }
                 
+                // Extraction code postal et ville depuis city_line (ex: "77170 Brie-Comte-Robert")
+                val cityLine = dto.address?.cityLine ?: ""
+                val cp = cityLine.split(" ").firstOrNull()
+                val ville = cityLine.substringAfter(cp ?: "").trim()
+
                 StationCarburant(
-                    id = dto.id,
-                    adresse = dto.adresse ?: "",
-                    latitude = stationLat,
-                    longitude = stationLon,
-                    enseigne = dto.nom ?: dto.ville ?: "Station Inconnue",
-                    prixGazole = dto.prixGazole,
-                    dateMiseAJour = dto.gazoleMaj,
-                    distanceMetres = distance
+                    id = dto.id.toString(),
+                    adresse = dto.address?.street ?: "",
+                    codePostal = cp,
+                    ville = ville,
+                    latitude = dto.coordinates?.latitude ?: 0.0,
+                    longitude = dto.coordinates?.longitude ?: 0.0,
+                    enseigne = dto.brand?.name ?: "Total",
+                    prixGazole = gazoleFuel?.price?.value,
+                    dateMiseAJour = gazoleFuel?.update?.value,
+                    horaires = if (dto.fuels?.any { it.available == true } == true) "Ouverte" else "Fermée",
+                    distanceMetres = dto.distance?.value ?: 0.0
                 )
             }.sortedBy { it.distanceMetres }
         } catch (e: Exception) {
+            Log.e("FuelStationService", "Erreur lors de la récupération des stations: ${e.message}", e)
             emptyList()
         }
-    }
-
-    private fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
-        val r = 6371e3 // Rayon de la Terre en mètres
-        val dLat = Math.toRadians(lat2 - lat1)
-        val dLon = Math.toRadians(lon2 - lon1)
-        val a = sin(dLat / 2) * sin(dLat / 2) +
-                cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
-                sin(dLon / 2) * sin(dLon / 2)
-        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
-        return r * c
     }
 }

@@ -1,12 +1,16 @@
 package com.example.dieselcalculateur.ui.calculateur
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.dieselcalculateur.data.local.AppDatabase
 import com.example.dieselcalculateur.data.local.CalculEntity
 import com.example.dieselcalculateur.data.model.CalculResult
 import com.example.dieselcalculateur.data.model.CalculateurLogic
+import com.example.dieselcalculateur.data.model.StationCarburant
+import com.example.dieselcalculateur.data.remote.FuelStationService
+import com.example.dieselcalculateur.data.remote.LocationHelper
 import com.example.dieselcalculateur.data.repository.CalculRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -15,10 +19,20 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+sealed class StationsState {
+    object Idle : StationsState()
+    object Loading : StationsState()
+    data class Success(val stations: List<StationCarburant>) : StationsState()
+    data class Error(val message: String) : StationsState()
+    object PermissionRequired : StationsState()
+}
+
 class CalculateurViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = CalculRepository(
         AppDatabase.getInstance(application).calculDao()
     )
+    private val locationHelper = LocationHelper(application)
+    private val fuelStationService = FuelStationService()
 
     private val _montantSouhaite = MutableStateFlow("")
     val montantSouhaite: StateFlow<String> = _montantSouhaite.asStateFlow()
@@ -31,6 +45,9 @@ class CalculateurViewModel(application: Application) : AndroidViewModel(applicat
 
     private val _resultat = MutableStateFlow<CalculResult?>(null)
     val resultat: StateFlow<CalculResult?> = _resultat.asStateFlow()
+
+    private val _stationsState = MutableStateFlow<StationsState>(StationsState.Idle)
+    val stationsState: StateFlow<StationsState> = _stationsState.asStateFlow()
 
     val historique: StateFlow<List<CalculEntity>> = repository.getHistorique()
         .stateIn(
@@ -70,6 +87,35 @@ class CalculateurViewModel(application: Application) : AndroidViewModel(applicat
     fun viderHistorique() {
         viewModelScope.launch {
             repository.supprimerTout()
+        }
+    }
+
+    fun rechercherStations(permissionAccordee: Boolean = true) {
+        if (!permissionAccordee) {
+            _stationsState.value = StationsState.PermissionRequired
+            return
+        }
+
+        viewModelScope.launch {
+            _stationsState.value = StationsState.Loading
+            Log.d("CalculateurVM", "Début de la récupération de position...")
+            val location = locationHelper.getLastKnownLocation()
+            Log.d("CalculateurVM", "Position reçue: $location")
+
+            if (location != null) {
+                val stations = fuelStationService.getNearbyStations(
+                    latitude = location.first,
+                    longitude = location.second,
+                    radiusMeters = 10000
+                )
+                if (stations.isEmpty()) {
+                    _stationsState.value = StationsState.Error("Aucune station trouvée dans un rayon de 10km")
+                } else {
+                    _stationsState.value = StationsState.Success(stations)
+                }
+            } else {
+                _stationsState.value = StationsState.Error("Impossible de récupérer votre position")
+            }
         }
     }
 
