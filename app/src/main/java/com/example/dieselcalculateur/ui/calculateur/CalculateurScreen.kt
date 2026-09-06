@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -95,40 +96,63 @@ fun CalculateurScreen(
             // Affichage du résultat ou de l'erreur
             when (val res = resultat) {
                 is CalculResult.Success -> {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)
+                        ),
+                        elevation = CardDefaults.cardElevation(0.dp)
                     ) {
-                        Text(
-                            text = String.format(java.util.Locale.FRANCE, "%.2f €", res.montantAAnnoncer),
-                            style = MaterialTheme.typography.displayLarge
-                        )
-                        Text(
-                            text = String.format(java.util.Locale.FRANCE, "%.2f L", res.litres),
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        Text(
-                            text = String.format(java.util.Locale.FRANCE, "Économie réalisée : %.2f €", res.economie),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Button(
-                            onClick = {
-                                viewModel.enregistrerCalcul()
-                                confirmationVisible = true
-                            },
-                            modifier = Modifier.padding(top = 8.dp)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text("Enregistrer")
-                        }
-                        if (confirmationVisible) {
                             Text(
-                                text = "Calcul enregistré",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+                                text = "À ANNONCER :",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
+                            Text(
+                                text = String.format(java.util.Locale.FRANCE, "%.2f €", res.montantAAnnoncer),
+                                style = MaterialTheme.typography.displayLarge,
+                                color = MaterialTheme.colorScheme.secondary,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                            )
+                            Text(
+                                text = String.format(java.util.Locale.FRANCE, "%.2f L", res.litres),
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                text = String.format(java.util.Locale.FRANCE, "Économie : %.2f €", res.economie),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Button(
+                                onClick = {
+                                    viewModel.enregistrerCalcul()
+                                    confirmationVisible = true
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondary,
+                                    contentColor = MaterialTheme.colorScheme.onSecondary
+                                ),
+                                modifier = Modifier.padding(top = 8.dp)
+                            ) {
+                                Text("Enregistrer")
+                            }
+                            if (confirmationVisible) {
+                                Text(
+                                    text = "Calcul enregistré",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+                                )
+                            }
                         }
                     }
                 }
@@ -250,9 +274,11 @@ private fun StationItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
@@ -326,7 +352,14 @@ private fun formatDateIso(isoString: String): String {
 
 @Composable
 private fun CalculHistoriqueItem(calcul: CalculEntity) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
