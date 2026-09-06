@@ -119,6 +119,14 @@ class CalculateurViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun selectionnerStation(station: StationCarburant) {
+        station.prixGazole?.let { prix ->
+            _prixAffiche.value = prix.toString()
+            lancerCalcul()
+            _stationsState.value = StationsState.Idle
+        }
+    }
+
     private fun sauvegarderCalcul(resultat: CalculResult) {
         if (resultat is CalculResult.Success) {
             viewModelScope.launch {

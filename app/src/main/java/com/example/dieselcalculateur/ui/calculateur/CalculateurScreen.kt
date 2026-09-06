@@ -1,5 +1,6 @@
 package com.example.dieselcalculateur.ui.calculateur
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -170,7 +171,10 @@ fun CalculateurScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(state.stations, key = { it.id }) { station ->
-                            StationItem(station = station)
+                            StationItem(
+                                station = station,
+                                onClick = { viewModel.selectionnerStation(station) }
+                            )
                         }
                     }
                     TextButton(
@@ -238,9 +242,14 @@ fun CalculateurScreen(
 }
 
 @Composable
-private fun StationItem(station: StationCarburant) {
+private fun StationItem(
+    station: StationCarburant,
+    onClick: () -> Unit
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
