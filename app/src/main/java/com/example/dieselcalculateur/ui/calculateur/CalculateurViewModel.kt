@@ -8,6 +8,7 @@ import com.example.dieselcalculateur.data.local.AppDatabase
 import com.example.dieselcalculateur.data.local.CalculEntity
 import com.example.dieselcalculateur.data.model.CalculResult
 import com.example.dieselcalculateur.data.model.CalculateurLogic
+import com.example.dieselcalculateur.data.model.Carburant
 import com.example.dieselcalculateur.data.model.StationCarburant
 import com.example.dieselcalculateur.data.remote.FuelStationService
 import com.example.dieselcalculateur.data.remote.LocationHelper
@@ -48,6 +49,12 @@ class CalculateurViewModel(application: Application) : AndroidViewModel(applicat
 
     private val _stationsState = MutableStateFlow<StationsState>(StationsState.Idle)
     val stationsState: StateFlow<StationsState> = _stationsState.asStateFlow()
+
+    private val _rayonRecherche = MutableStateFlow(10f)
+    val rayonRecherche: StateFlow<Float> = _rayonRecherche.asStateFlow()
+
+    private val _carburantSelectionne = MutableStateFlow(Carburant.GAZOLE)
+    val carburantSelectionne: StateFlow<Carburant> = _carburantSelectionne.asStateFlow()
 
     val historique: StateFlow<List<CalculEntity>> = repository.getHistorique()
         .stateIn(
@@ -106,10 +113,11 @@ class CalculateurViewModel(application: Application) : AndroidViewModel(applicat
                 val stations = fuelStationService.getNearbyStations(
                     latitude = location.first,
                     longitude = location.second,
-                    radiusMeters = 10000
+                    radiusMeters = (_rayonRecherche.value * 1000).toInt(),
+                    fuelId = _carburantSelectionne.value.id
                 )
                 if (stations.isEmpty()) {
-                    _stationsState.value = StationsState.Error("Aucune station trouvée dans un rayon de 10km")
+                    _stationsState.value = StationsState.Error("Aucune station trouvée dans un rayon de ${_rayonRecherche.value.toInt()}km")
                 } else {
                     _stationsState.value = StationsState.Success(stations)
                 }
@@ -125,6 +133,15 @@ class CalculateurViewModel(application: Application) : AndroidViewModel(applicat
             lancerCalcul()
             _stationsState.value = StationsState.Idle
         }
+    }
+
+    fun onRayonRechercheChange(newValue: Float) {
+        _rayonRecherche.value = newValue
+    }
+
+    fun onCarburantSelectionneChange(newValue: Carburant) {
+        _carburantSelectionne.value = newValue
+        _stationsState.value = StationsState.Idle // On reset la recherche si le carburant change
     }
 
     private fun sauvegarderCalcul(resultat: CalculResult) {

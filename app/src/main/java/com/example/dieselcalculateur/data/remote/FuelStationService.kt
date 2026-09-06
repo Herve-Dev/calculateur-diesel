@@ -44,7 +44,8 @@ class FuelStationService {
     suspend fun getNearbyStations(
         latitude: Double,
         longitude: Double,
-        radiusMeters: Int
+        radiusMeters: Int,
+        fuelId: Int
     ): List<StationCarburant> {
         return try {
             val stationsRaw = api.getStationsAround(latitude, longitude)
@@ -55,8 +56,8 @@ class FuelStationService {
                 val distanceVal = dto.distance?.value ?: Double.MAX_VALUE
                 dto.brand?.id in TARGET_BRAND_IDS && distanceVal <= radiusMeters
             }.map { dto ->
-                val gazoleFuel = dto.fuels?.find { it.id == FUEL_GAZOLE_ID }
-                
+                val fuel = dto.fuels?.find { it.id == fuelId }
+
                 // Extraction code postal et ville depuis city_line (ex: "77170 Brie-Comte-Robert")
                 val cityLine = dto.address?.cityLine ?: ""
                 val cp = cityLine.split(" ").firstOrNull()
@@ -70,8 +71,8 @@ class FuelStationService {
                     latitude = dto.coordinates?.latitude ?: 0.0,
                     longitude = dto.coordinates?.longitude ?: 0.0,
                     enseigne = dto.brand?.name ?: "Total",
-                    prixGazole = gazoleFuel?.price?.value,
-                    dateMiseAJour = gazoleFuel?.update?.value,
+                    prixGazole = fuel?.price?.value,
+                    dateMiseAJour = fuel?.update?.value,
                     horaires = if (dto.fuels?.any { it.available == true } == true) "Ouverte" else "Fermée",
                     distanceMetres = dto.distance?.value ?: 0.0
                 )

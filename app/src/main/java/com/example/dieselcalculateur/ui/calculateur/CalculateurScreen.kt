@@ -6,6 +6,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,16 +21,17 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.dieselcalculateur.data.local.CalculEntity
 import com.example.dieselcalculateur.data.model.CalculResult
 import com.example.dieselcalculateur.data.model.StationCarburant
-import com.example.dieselcalculateur.ui.calculateur.CalculateurViewModel
 import com.example.dieselcalculateur.ui.stations.LocationPermissionHandler
 import kotlinx.coroutines.delay
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalculateurScreen(
-    viewModel: CalculateurViewModel = viewModel()
+    viewModel: CalculateurViewModel = viewModel(),
+    onNavigateToReglages: () -> Unit
 ) {
     val montantSouhaite by viewModel.montantSouhaite.collectAsState()
     val prixAffiche by viewModel.prixAffiche.collectAsState()
@@ -54,210 +57,224 @@ fun CalculateurScreen(
         }
     }
 
-    Surface(
-        modifier = Modifier
-            .fillMaxSize(),
-        color = MaterialTheme.colorScheme.background,
-        contentColor = MaterialTheme.colorScheme.onBackground
-    ) {
-        Column(
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Calculateur Diesel") },
+                actions = {
+                    IconButton(onClick = onNavigateToReglages) {
+                        Icon(Icons.Default.Settings, contentDescription = "Réglages")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Surface(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(padding),
+            color = MaterialTheme.colorScheme.background,
+            contentColor = MaterialTheme.colorScheme.onBackground
         ) {
-            OutlinedTextField(
-                value = montantSouhaite,
-                onValueChange = viewModel::onMontantSouhaiteChange,
-                label = { Text("Montant réellement souhaité (€)") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                OutlinedTextField(
+                    value = montantSouhaite,
+                    onValueChange = viewModel::onMontantSouhaiteChange,
+                    label = { Text("Montant réellement souhaité (€)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
+                )
 
-            OutlinedTextField(
-                value = prixAffiche,
-                onValueChange = viewModel::onPrixAfficheChange,
-                label = { Text("Prix affiché à la pompe (€/L)") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true
-            )
+                OutlinedTextField(
+                    value = prixAffiche,
+                    onValueChange = viewModel::onPrixAfficheChange,
+                    label = { Text("Prix affiché à la pompe (€/L)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
+                )
 
-            OutlinedTextField(
-                value = prixPlafonne,
-                onValueChange = viewModel::onPrixPlafonneChange,
-                label = { Text("Prix plafonné de la carte (€/L)") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true
-            )
+                OutlinedTextField(
+                    value = prixPlafonne,
+                    onValueChange = viewModel::onPrixPlafonneChange,
+                    label = { Text("Prix plafonné de la carte (€/L)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
+                )
 
-            // Affichage du résultat ou de l'erreur
-            when (val res = resultat) {
-                is CalculResult.Success -> {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)
-                        ),
-                        elevation = CardDefaults.cardElevation(0.dp)
-                    ) {
-                        Column(
+                // Affichage du résultat ou de l'erreur
+                when (val res = resultat) {
+                    is CalculResult.Success -> {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)
+                            ),
+                            elevation = CardDefaults.cardElevation(0.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "À ANNONCER :",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Text(
+                                    text = String.format(java.util.Locale.FRANCE, "%.2f €", res.montantAAnnoncer),
+                                    style = MaterialTheme.typography.displayLarge,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                )
+                                Text(
+                                    text = String.format(java.util.Locale.FRANCE, "%.2f L", res.litres),
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Text(
+                                    text = String.format(java.util.Locale.FRANCE, "Économie : %.2f €", res.economie),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Button(
+                                    onClick = {
+                                        viewModel.enregistrerCalcul()
+                                        confirmationVisible = true
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.secondary,
+                                        contentColor = MaterialTheme.colorScheme.onSecondary
+                                    ),
+                                    modifier = Modifier.padding(top = 8.dp)
+                                ) {
+                                    Text("Enregistrer")
+                                }
+                                if (confirmationVisible) {
+                                    Text(
+                                        text = "Calcul enregistré",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    is CalculResult.Error -> {
+                        Text(
+                            text = res.message,
+                            color = MaterialTheme.colorScheme.error,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(20.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
+                                .semantics { liveRegion = LiveRegionMode.Polite }
+                        )
+                    }
+                    null -> { /* Rien ne s'affiche si aucun calcul n'a été tenté */ }
+                }
+
+                // Section Stations Proches
+                Text(
+                    text = "Stations à proximité",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+
+                when (val state = stationsState) {
+                    is StationsState.Idle -> {
+                        Button(
+                            onClick = { showPermissionHandler = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Trouver les stations autour de moi")
+                        }
+                    }
+                    is StationsState.Loading -> {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                    }
+                    is StationsState.Success -> {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 250.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(
-                                text = "À ANNONCER :",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Text(
-                                text = String.format(java.util.Locale.FRANCE, "%.2f €", res.montantAAnnoncer),
-                                style = MaterialTheme.typography.displayLarge,
-                                color = MaterialTheme.colorScheme.secondary,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                            )
-                            Text(
-                                text = String.format(java.util.Locale.FRANCE, "%.2f L", res.litres),
-                                style = MaterialTheme.typography.headlineSmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Text(
-                                text = String.format(java.util.Locale.FRANCE, "Économie : %.2f €", res.economie),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Button(
-                                onClick = {
-                                    viewModel.enregistrerCalcul()
-                                    confirmationVisible = true
-                                },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondary,
-                                    contentColor = MaterialTheme.colorScheme.onSecondary
-                                ),
-                                modifier = Modifier.padding(top = 8.dp)
-                            ) {
-                                Text("Enregistrer")
-                            }
-                            if (confirmationVisible) {
-                                Text(
-                                    text = "Calcul enregistré",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+                            items(state.stations, key = { it.id }) { station ->
+                                StationItem(
+                                    station = station,
+                                    onClick = { viewModel.selectionnerStation(station) }
                                 )
                             }
                         }
+                        TextButton(
+                            onClick = { showPermissionHandler = true },
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Text("Actualiser")
+                        }
+                    }
+                    is StationsState.Error -> {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(state.message, color = MaterialTheme.colorScheme.error)
+                            Button(onClick = { showPermissionHandler = true }) {
+                                Text("Réessayer")
+                            }
+                        }
+                    }
+                    is StationsState.PermissionRequired -> {
+                        Text(
+                            "La permission de localisation est nécessaire pour trouver les stations.",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Button(onClick = { showPermissionHandler = true }) {
+                            Text("Accorder la permission")
+                        }
                     }
                 }
-                is CalculResult.Error -> {
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
-                        text = res.message,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .semantics { liveRegion = LiveRegionMode.Polite }
+                        text = "Historique",
+                        style = MaterialTheme.typography.titleMedium
                     )
-                }
-                null -> { /* Rien ne s'affiche si aucun calcul n'a été tenté */ }
-            }
-
-            // Section Stations Proches
-            Text(
-                text = "Stations à proximité",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-
-            when (val state = stationsState) {
-                is StationsState.Idle -> {
-                    Button(
-                        onClick = { showPermissionHandler = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Trouver les stations autour de moi")
+                    if (historique.isNotEmpty()) {
+                        TextButton(onClick = viewModel::viderHistorique) {
+                            Text("Vider")
+                        }
                     }
                 }
-                is StationsState.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-                }
-                is StationsState.Success -> {
+
+                if (historique.isEmpty()) {
+                    Text(
+                        text = "Aucun calcul enregistré pour le moment",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 250.dp),
+                            .weight(1f),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(state.stations, key = { it.id }) { station ->
-                            StationItem(
-                                station = station,
-                                onClick = { viewModel.selectionnerStation(station) }
-                            )
+                        items(historique, key = { it.id }) { calcul ->
+                            CalculHistoriqueItem(calcul = calcul)
                         }
-                    }
-                    TextButton(
-                        onClick = { showPermissionHandler = true },
-                        modifier = Modifier.align(Alignment.End)
-                    ) {
-                        Text("Actualiser")
-                    }
-                }
-                is StationsState.Error -> {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(state.message, color = MaterialTheme.colorScheme.error)
-                        Button(onClick = { showPermissionHandler = true }) {
-                            Text("Réessayer")
-                        }
-                    }
-                }
-                is StationsState.PermissionRequired -> {
-                    Text(
-                        "La permission de localisation est nécessaire pour trouver les stations.",
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    Button(onClick = { showPermissionHandler = true }) {
-                        Text("Accorder la permission")
-                    }
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Historique",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                if (historique.isNotEmpty()) {
-                    TextButton(onClick = viewModel::viderHistorique) {
-                        Text("Vider")
-                    }
-                }
-            }
-
-            if (historique.isEmpty()) {
-                Text(
-                    text = "Aucun calcul enregistré pour le moment",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(historique, key = { it.id }) { calcul ->
-                        CalculHistoriqueItem(calcul = calcul)
                     }
                 }
             }
