@@ -61,11 +61,16 @@ class CalculateurViewModel(application: Application) : AndroidViewModel(applicat
             _prixPlafonne.value
         )
         _resultat.value = nouveauResultat
-        sauvegarderCalcul(nouveauResultat)
     }
 
     fun enregistrerCalcul() {
         _resultat.value?.let(::sauvegarderCalcul)
+    }
+
+    fun viderHistorique() {
+        viewModelScope.launch {
+            repository.supprimerTout()
+        }
     }
 
     private fun sauvegarderCalcul(resultat: CalculResult) {

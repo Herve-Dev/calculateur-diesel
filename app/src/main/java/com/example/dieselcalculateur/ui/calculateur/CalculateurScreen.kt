@@ -1,6 +1,8 @@
 package com.example.dieselcalculateur.ui.calculateur
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -12,8 +14,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.dieselcalculateur.data.local.CalculEntity
 import com.example.dieselcalculateur.data.model.CalculResult
 import com.example.dieselcalculateur.ui.calculateur.CalculateurViewModel
+import kotlinx.coroutines.delay
+import java.text.DateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun CalculateurScreen(
@@ -23,73 +30,178 @@ fun CalculateurScreen(
     val prixAffiche by viewModel.prixAffiche.collectAsState()
     val prixPlafonne by viewModel.prixPlafonne.collectAsState()
     val resultat by viewModel.resultat.collectAsState()
+    val historique by viewModel.historique.collectAsState()
+    var confirmationVisible by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        OutlinedTextField(
-            value = montantSouhaite,
-            onValueChange = viewModel::onMontantSouhaiteChange,
-            label = { Text("Montant réellement souhaité (€)") },
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            singleLine = true
-        )
-
-        OutlinedTextField(
-            value = prixAffiche,
-            onValueChange = viewModel::onPrixAfficheChange,
-            label = { Text("Prix affiché à la pompe (€/L)") },
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            singleLine = true
-        )
-
-        OutlinedTextField(
-            value = prixPlafonne,
-            onValueChange = viewModel::onPrixPlafonneChange,
-            label = { Text("Prix plafonné de la carte (€/L)") },
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            singleLine = true
-        )
-
-        // Affichage du résultat ou de l'erreur
-        when (val res = resultat) {
-            is CalculResult.Success -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = String.format(java.util.Locale.FRANCE, "%.2f €", res.montantAAnnoncer),
-                        style = MaterialTheme.typography.displayLarge
-                    )
-                    Text(
-                        text = String.format(java.util.Locale.FRANCE, "%.2f L", res.litres),
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Text(
-                        text = String.format(java.util.Locale.FRANCE, "Économie réalisée : %.2f €", res.economie),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-            is CalculResult.Error -> {
-                Text(
-                    text = res.message,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics { liveRegion = LiveRegionMode.Polite }
-                )
-            }
-            null -> { /* Rien ne s'affiche si aucun calcul n'a été tenté */ }
+    LaunchedEffect(confirmationVisible) {
+        if (confirmationVisible) {
+            delay(2_000)
+            confirmationVisible = false
         }
     }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onBackground
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            OutlinedTextField(
+                value = montantSouhaite,
+                onValueChange = viewModel::onMontantSouhaiteChange,
+                label = { Text("Montant réellement souhaité (€)") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true
+            )
+
+            OutlinedTextField(
+                value = prixAffiche,
+                onValueChange = viewModel::onPrixAfficheChange,
+                label = { Text("Prix affiché à la pompe (€/L)") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true
+            )
+
+            OutlinedTextField(
+                value = prixPlafonne,
+                onValueChange = viewModel::onPrixPlafonneChange,
+                label = { Text("Prix plafonné de la carte (€/L)") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true
+            )
+
+            // Affichage du résultat ou de l'erreur
+            when (val res = resultat) {
+                is CalculResult.Success -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = String.format(java.util.Locale.FRANCE, "%.2f €", res.montantAAnnoncer),
+                            style = MaterialTheme.typography.displayLarge
+                        )
+                        Text(
+                            text = String.format(java.util.Locale.FRANCE, "%.2f L", res.litres),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = String.format(java.util.Locale.FRANCE, "Économie réalisée : %.2f €", res.economie),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Button(
+                            onClick = {
+                                viewModel.enregistrerCalcul()
+                                confirmationVisible = true
+                            },
+                            modifier = Modifier.padding(top = 8.dp)
+                        ) {
+                            Text("Enregistrer")
+                        }
+                        if (confirmationVisible) {
+                            Text(
+                                text = "Calcul enregistré",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+                            )
+                        }
+                    }
+                }
+                is CalculResult.Error -> {
+                    Text(
+                        text = res.message,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { liveRegion = LiveRegionMode.Polite }
+                    )
+                }
+                null -> { /* Rien ne s'affiche si aucun calcul n'a été tenté */ }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Historique",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                if (historique.isNotEmpty()) {
+                    TextButton(onClick = viewModel::viderHistorique) {
+                        Text("Vider")
+                    }
+                }
+            }
+
+            if (historique.isEmpty()) {
+                Text(
+                    text = "Aucun calcul enregistré pour le moment",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(historique, key = { it.id }) { calcul ->
+                        CalculHistoriqueItem(calcul = calcul)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CalculHistoriqueItem(calcul: CalculEntity) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = formatDate(calcul.date),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = String.format(Locale.FRANCE, "Montant souhaité : %.2f €", calcul.montantSouhaite),
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = String.format(Locale.FRANCE, "Litres : %.2f L", calcul.litres),
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = String.format(Locale.FRANCE, "Montant à annoncer : %.2f €", calcul.montantAAnnoncer),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+    }
+}
+
+private fun formatDate(timestamp: Long): String {
+    val formatter = DateFormat.getDateTimeInstance(
+        DateFormat.SHORT,
+        DateFormat.SHORT,
+        Locale.FRANCE
+    )
+    return formatter.format(Date(timestamp))
 }

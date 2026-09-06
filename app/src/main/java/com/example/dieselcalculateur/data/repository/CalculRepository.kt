@@ -12,4 +12,8 @@ class CalculRepository(private val dao: CalculDao) {
     fun getHistorique(): Flow<List<CalculEntity>> {
         return dao.getAll()
     }
+
+    suspend fun supprimerTout() {
+        dao.deleteAll()
+    }
 }
