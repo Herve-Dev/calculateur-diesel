@@ -159,26 +159,36 @@ fun CalculateurScreen(
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
-                                Button(
-                                    onClick = {
-                                        viewModel.enregistrerCalcul()
-                                        confirmationVisible = true
-                                    },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.secondary,
-                                        contentColor = MaterialTheme.colorScheme.onSecondary
-                                    ),
-                                    modifier = Modifier.padding(top = 8.dp)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
                                 ) {
-                                    Text("Enregistrer")
-                                }
-                                if (confirmationVisible) {
-                                    Text(
-                                        text = "Calcul enregistré",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
-                                    )
+                                    Button(
+                                        onClick = {
+                                            viewModel.enregistrerCalcul()
+                                            confirmationVisible = true
+                                        },
+                                        enabled = !confirmationVisible,
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.secondary,
+                                            contentColor = MaterialTheme.colorScheme.onSecondary,
+                                            disabledContainerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f),
+                                            disabledContentColor = MaterialTheme.colorScheme.onSecondary
+                                        ),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(if (confirmationVisible) "✓ Enregistré" else "Enregistrer")
+                                    }
+
+                                    OutlinedButton(
+                                        onClick = viewModel::nouveauCalcul,
+                                        colors = ButtonDefaults.outlinedButtonColors(
+                                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                        ),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("Nouveau")
+                                    }
                                 }
                             }
                         }
@@ -322,7 +332,11 @@ fun CalculateurScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(historique, key = { it.id }) { calcul ->
-                            CalculHistoriqueItem(calcul = calcul)
+                            val isNew = confirmationVisible && calcul == historique.firstOrNull()
+                            CalculHistoriqueItem(
+                                calcul = calcul,
+                                isNew = isNew
+                            )
                         }
                     }
                 }
@@ -446,12 +460,15 @@ private fun formatDateIso(isoString: String): String {
 }
 
 @Composable
-private fun CalculHistoriqueItem(calcul: CalculEntity) {
+private fun CalculHistoriqueItem(
+    calcul: CalculEntity,
+    isNew: Boolean = false
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = if (isNew) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {

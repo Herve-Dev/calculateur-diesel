@@ -134,6 +134,12 @@ class CalculateurViewModel(application: Application) : AndroidViewModel(applicat
         _resultat.value?.let(::sauvegarderCalcul)
     }
 
+    fun nouveauCalcul() {
+        _montantSouhaite.value = ""
+        _prixAffiche.value = ""
+        _resultat.value = null
+    }
+
     fun viderHistorique() {
         viewModelScope.launch {
             repository.supprimerTout()
