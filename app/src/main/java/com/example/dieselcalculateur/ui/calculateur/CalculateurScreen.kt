@@ -4,23 +4,31 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.dieselcalculateur.data.local.CalculEntity
 import com.example.dieselcalculateur.data.model.CalculResult
 import com.example.dieselcalculateur.data.model.StationCarburant
+import com.example.dieselcalculateur.data.remote.CitySuggestion
 import com.example.dieselcalculateur.ui.stations.LocationPermissionHandler
 import kotlinx.coroutines.delay
 import java.text.DateFormat
@@ -39,9 +47,12 @@ fun CalculateurScreen(
     val resultat by viewModel.resultat.collectAsState()
     val historique by viewModel.historique.collectAsState()
     val stationsState by viewModel.stationsState.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val citySuggestions by viewModel.citySuggestions.collectAsState()
 
     var confirmationVisible by remember { mutableStateOf(false) }
     var showPermissionHandler by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
 
     if (showPermissionHandler) {
         LocationPermissionHandler { isGranted ->
@@ -191,14 +202,52 @@ fun CalculateurScreen(
                     modifier = Modifier.padding(top = 8.dp)
                 )
 
+                SearchTextField(
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = viewModel::onSearchQueryChange,
+                    onMyLocationClick = {
+                        focusManager.clearFocus()
+                        showPermissionHandler = true
+                    },
+                    onSearchAction = {
+                        focusManager.clearFocus()
+                        viewModel.rechercherStationsParTexte()
+                    }
+                )
+
+                if (citySuggestions.isNotEmpty()) {
+                    Popup(
+                        alignment = Alignment.TopCenter,
+                        onDismissRequest = { viewModel.onSearchQueryChange(searchQuery) }
+                    ) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .heightIn(max = 200.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                            elevation = CardDefaults.cardElevation(8.dp)
+                        ) {
+                            LazyColumn {
+                                items(citySuggestions) { suggestion ->
+                                    ListItem(
+                                        headlineContent = { Text(suggestion.city) },
+                                        supportingContent = { Text("${suggestion.postcode} - ${suggestion.context}") },
+                                        modifier = Modifier.clickable {
+                                            focusManager.clearFocus()
+                                            viewModel.selectCity(suggestion)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 when (val state = stationsState) {
                     is StationsState.Idle -> {
-                        Button(
-                            onClick = { showPermissionHandler = true },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Trouver les stations autour de moi")
-                        }
+                        // Le champ de recherche est déjà affiché au-dessus
                     }
                     is StationsState.Loading -> {
                         CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
@@ -218,23 +267,23 @@ fun CalculateurScreen(
                             }
                         }
                         TextButton(
-                            onClick = { showPermissionHandler = true },
+                            onClick = { viewModel.recommencerRecherche() },
                             modifier = Modifier.align(Alignment.End)
                         ) {
-                            Text("Actualiser")
+                            Text("Effacer les résultats")
                         }
                     }
                     is StationsState.Error -> {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                             Text(state.message, color = MaterialTheme.colorScheme.error)
-                            Button(onClick = { showPermissionHandler = true }) {
-                                Text("Réessayer")
+                            TextButton(onClick = { viewModel.recommencerRecherche() }) {
+                                Text("Recommencer")
                             }
                         }
                     }
                     is StationsState.PermissionRequired -> {
                         Text(
-                            "La permission de localisation est nécessaire pour trouver les stations.",
+                            "La permission de localisation est nécessaire pour trouver les stations autour de vous.",
                             color = MaterialTheme.colorScheme.error
                         )
                         Button(onClick = { showPermissionHandler = true }) {
@@ -280,6 +329,35 @@ fun CalculateurScreen(
             }
         }
     }
+}
+
+@Composable
+private fun SearchTextField(
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    onMyLocationClick: () -> Unit,
+    onSearchAction: () -> Unit
+) {
+    OutlinedTextField(
+        value = searchQuery,
+        onValueChange = onSearchQueryChange,
+        label = { Text("Ville ou Code Postal") },
+        modifier = Modifier.fillMaxWidth(),
+        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+        trailingIcon = {
+            IconButton(onClick = onMyLocationClick) {
+                Icon(Icons.Default.MyLocation, contentDescription = "Ma position")
+            }
+        },
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Text,
+            imeAction = ImeAction.Search
+        ),
+        keyboardActions = KeyboardActions(
+            onSearch = { onSearchAction() }
+        ),
+        singleLine = true
+    )
 }
 
 @Composable

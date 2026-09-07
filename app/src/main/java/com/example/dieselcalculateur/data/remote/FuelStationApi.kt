@@ -13,4 +13,11 @@ interface FuelStationApi {
         @Query("responseFields") responseFields: String = "Fuels,Price,Brand,Address",
         @Header("Accept") accept: String = "application/json"
     ): List<FuelStationDto>
+
+    @GET("stations/")
+    suspend fun searchStations(
+        @Query("q") query: String,
+        @Query("responseFields") responseFields: String = "Fuels,Price,Brand,Address",
+        @Header("Accept") accept: String = "application/json"
+    ): List<FuelStationDto>
 }
