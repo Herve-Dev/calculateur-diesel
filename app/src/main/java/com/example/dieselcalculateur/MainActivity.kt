@@ -11,6 +11,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.dieselcalculateur.ui.calculateur.CalculateurScreen
 import com.example.dieselcalculateur.ui.calculateur.CalculateurViewModel
 import com.example.dieselcalculateur.ui.reglages.ReglagesScreen
+import com.example.dieselcalculateur.ui.update.UpdateViewModel
 import com.example.dieselcalculateur.ui.theme.DieselCalculateurTheme
 
 class MainActivity : ComponentActivity() {
@@ -21,6 +22,7 @@ class MainActivity : ComponentActivity() {
             DieselCalculateurTheme {
                 val navController = rememberNavController()
                 val viewModel: CalculateurViewModel = viewModel()
+                val updateViewModel: UpdateViewModel = viewModel()
                 
                 NavHost(navController = navController, startDestination = "calculateur") {
                     composable("calculateur") {
@@ -32,6 +34,7 @@ class MainActivity : ComponentActivity() {
                     composable("reglages") {
                         ReglagesScreen(
                             viewModel = viewModel,
+                            updateViewModel = updateViewModel,
                             onBack = { navController.popBackStack() }
                         )
                     }
