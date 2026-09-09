@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -9,6 +11,30 @@ android {
     compileSdk {
         version = release(37) {
             minorApiLevel = 1
+        }
+    }
+
+    val localProperties = Properties()
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use { 
+            localProperties.load(it) 
+        }
+    }
+
+    signingConfigs {
+        create("release") {
+            val path = System.getenv("KEYSTORE_PATH")
+                ?: localProperties.getProperty("signing.keystore.path")
+            if (path != null) {
+                storeFile = file(path)
+            }
+            storePassword = System.getenv("KEYSTORE_PASSWORD")
+                ?: localProperties.getProperty("signing.keystore.password")
+            keyAlias = System.getenv("KEY_ALIAS")
+                ?: localProperties.getProperty("signing.key.alias")
+            keyPassword = System.getenv("KEY_PASSWORD")
+                ?: localProperties.getProperty("signing.key.password")
         }
     }
 
@@ -24,8 +50,12 @@ android {
 
     buildTypes {
         release {
-            optimization {
-                enable = false
+            isMinifyEnabled = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            
+            val releaseSigning = signingConfigs.getByName("release")
+            if (releaseSigning.storeFile != null && releaseSigning.storeFile?.exists() == true) {
+                signingConfig = releaseSigning
             }
         }
     }
@@ -42,6 +72,7 @@ android {
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.fragment.ktx)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui)
