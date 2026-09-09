@@ -58,9 +58,13 @@ fun ReglagesScreen(
                 )
                 Slider(
                     value = rayon,
-                    onValueChange = viewModel::onRayonRechercheChange,
+                    onValueChange = { newValue ->
+                        // On arrondit au multiple de 5 le plus proche pour plus de sécurité
+                        val roundedValue = (Math.round(newValue / 5f) * 5).toFloat()
+                        viewModel.onRayonRechercheChange(roundedValue)
+                    },
                     valueRange = 5f..30f,
-                    steps = 5 // 5, 10, 15, 20, 25, 30
+                    steps = 4 // (30-5)/5 - 1 = 4 steps (10, 15, 20, 25)
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
