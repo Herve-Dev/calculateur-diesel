@@ -1,12 +1,14 @@
 package com.example.dieselcalculateur.ui.calculateur
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
@@ -33,6 +35,7 @@ import com.example.dieselcalculateur.data.remote.CitySuggestion
 import com.example.dieselcalculateur.ui.components.*
 import com.example.dieselcalculateur.ui.stations.LocationPermissionHandler
 import com.example.dieselcalculateur.ui.theme.AmberSecondary
+import com.example.dieselcalculateur.ui.theme.DarkBackground
 import com.example.dieselcalculateur.ui.theme.OffWhite
 import com.example.dieselcalculateur.ui.theme.TealPrimary
 import kotlinx.coroutines.delay
@@ -209,10 +212,12 @@ fun CalculateurScreen(
                     null -> { /* Rien ne s'affiche si aucun calcul n'a été tenté */ }
                 }
 
-                // Section Stations Proches (inchangée à cette étape)
+                // Section Stations Proches (Composants Pilule & Glow - Phase 9.3)
                 Text(
                     text = "Stations à proximité",
-                    style = MaterialTheme.typography.titleMedium,
+                    color = OffWhite,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(top = 8.dp)
                 )
 
@@ -239,7 +244,7 @@ fun CalculateurScreen(
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp)
                                 .heightIn(max = 200.dp),
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(12.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                             elevation = CardDefaults.cardElevation(8.dp)
                         ) {
@@ -264,18 +269,27 @@ fun CalculateurScreen(
                         // Le champ de recherche est déjà affiché au-dessus
                     }
                     is StationsState.Loading -> {
-                        CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                        CircularProgressIndicator(
+                            color = TealPrimary,
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        )
                     }
                     is StationsState.Success -> {
+                        val cheapestPrice = state.stations
+                            .mapNotNull { it.prixGazole }
+                            .minOrNull()
+
                         LazyColumn(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(max = 250.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                .heightIn(max = 280.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             items(state.stations, key = { it.id }) { station ->
+                                val isCheapest = cheapestPrice != null && station.prixGazole == cheapestPrice
                                 StationItem(
                                     station = station,
+                                    isCheapest = isCheapest,
                                     onClick = { viewModel.selectionnerStation(station) }
                                 )
                             }
@@ -284,14 +298,17 @@ fun CalculateurScreen(
                             onClick = { viewModel.recommencerRecherche() },
                             modifier = Modifier.align(Alignment.End)
                         ) {
-                            Text("Effacer les résultats")
+                            Text("Effacer les résultats", color = TealPrimary)
                         }
                     }
                     is StationsState.Error -> {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             Text(state.message, color = MaterialTheme.colorScheme.error)
                             TextButton(onClick = { viewModel.recommencerRecherche() }) {
-                                Text("Recommencer")
+                                Text("Recommencer", color = TealPrimary)
                             }
                         }
                     }
@@ -300,9 +317,12 @@ fun CalculateurScreen(
                             "La permission de localisation est nécessaire pour trouver les stations autour de vous.",
                             color = MaterialTheme.colorScheme.error
                         )
-                        Button(onClick = { showPermissionHandler = true }) {
-                            Text("Accorder la permission")
-                        }
+                        PillButton(
+                            text = "Accorder la permission",
+                            variant = PillButtonVariant.TEAL,
+                            onClick = { showPermissionHandler = true },
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 }
 
@@ -357,15 +377,27 @@ private fun SearchTextField(
     onMyLocationClick: () -> Unit,
     onSearchAction: () -> Unit
 ) {
-    OutlinedTextField(
+    GlowTextField(
         value = searchQuery,
         onValueChange = onSearchQueryChange,
-        label = { Text("Ville ou Code Postal") },
-        modifier = Modifier.fillMaxWidth(),
-        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+        label = "Ville ou Code Postal",
+        placeholder = "ex: Paris, 75001...",
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = null,
+                tint = TealPrimary,
+                modifier = Modifier.size(20.dp)
+            )
+        },
         trailingIcon = {
             IconButton(onClick = onMyLocationClick) {
-                Icon(Icons.Default.MyLocation, contentDescription = "Ma position")
+                Icon(
+                    imageVector = Icons.Default.MyLocation,
+                    contentDescription = "Ma position",
+                    tint = AmberSecondary,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         },
         keyboardOptions = KeyboardOptions(
@@ -382,42 +414,64 @@ private fun SearchTextField(
 @Composable
 private fun StationItem(
     station: StationCarburant,
+    isCheapest: Boolean = false,
     onClick: () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
+    GlowCard(
+        type = if (isCheapest) GlowCardType.AMBER else GlowCardType.NEUTRAL,
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = station.enseigne ?: "Station",
-                    style = MaterialTheme.typography.titleSmall,
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.weight(1f)
-                )
+                ) {
+                    Text(
+                        text = station.enseigne ?: "Station",
+                        color = OffWhite,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (isCheapest) {
+                        Box(
+                            modifier = Modifier
+                                .background(AmberSecondary, shape = CircleShape)
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "MOINS CHÈRE",
+                                color = DarkBackground,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
+                    }
+                }
+
                 Text(
-                    text = String.format(Locale.FRANCE, "%.2f €/L", station.prixGazole ?: 0.0),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary
+                    text = String.format(Locale.FRANCE, "%.3f €/L", station.prixGazole ?: 0.0),
+                    color = if (isCheapest) AmberSecondary else TealPrimary,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
+
             Text(
                 text = "${station.adresse}, ${station.codePostal ?: ""} ${station.ville ?: ""}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = OffWhite.copy(alpha = 0.65f),
+                fontSize = 13.sp
             )
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -427,22 +481,25 @@ private fun StationItem(
                     station.horaires?.let {
                         Text(
                             text = it,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.secondary
+                            color = TealPrimary,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                     station.dateMiseAJour?.let {
                         Text(
                             text = "MàJ : ${formatDateIso(it)}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = OffWhite.copy(alpha = 0.45f),
+                            fontSize = 11.sp
                         )
                     }
                 }
+
                 Text(
                     text = String.format(Locale.FRANCE, "À %.1f km", station.distanceMetres / 1000.0),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.secondary
+                    color = OffWhite.copy(alpha = 0.8f),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }
