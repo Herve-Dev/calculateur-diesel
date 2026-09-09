@@ -4,11 +4,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
@@ -98,6 +101,7 @@ fun CalculateurScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -212,7 +216,7 @@ fun CalculateurScreen(
                     null -> { /* Rien ne s'affiche si aucun calcul n'a été tenté */ }
                 }
 
-                // Section Stations Proches (Composants Pilule & Glow - Phase 9.3)
+                // Section Stations Proches (Composants Pilule & Glow)
                 Text(
                     text = "Stations à proximité",
                     color = OffWhite,
@@ -326,7 +330,7 @@ fun CalculateurScreen(
                     }
                 }
 
-                // Section Historique (inchangée à cette étape)
+                // Section Historique (Scroll Horizontal avec GlowCard - Phase 9.4)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -334,11 +338,13 @@ fun CalculateurScreen(
                 ) {
                     Text(
                         text = "Historique",
-                        style = MaterialTheme.typography.titleMedium
+                        color = OffWhite,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
                     )
                     if (historique.isNotEmpty()) {
                         TextButton(onClick = viewModel::viderHistorique) {
-                            Text("Vider")
+                            Text("Vider", color = TealPrimary)
                         }
                     }
                 }
@@ -346,15 +352,15 @@ fun CalculateurScreen(
                 if (historique.isEmpty()) {
                     Text(
                         text = "Aucun calcul enregistré pour le moment",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = OffWhite.copy(alpha = 0.5f),
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(vertical = 8.dp)
                     )
                 } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(vertical = 4.dp)
                     ) {
                         items(historique, key = { it.id }) { calcul ->
                             val isNew = confirmationVisible && calcul == historique.firstOrNull()
@@ -525,34 +531,47 @@ private fun CalculHistoriqueItem(
     calcul: CalculEntity,
     isNew: Boolean = false
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isNew) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
+    GlowCard(
+        type = if (isNew) GlowCardType.TEAL else GlowCardType.NEUTRAL,
+        modifier = Modifier.width(150.dp)
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
                 text = formatDate(calcul.date),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = OffWhite.copy(alpha = 0.5f),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium
             )
+
             Text(
-                text = String.format(Locale.FRANCE, "Montant souhaité : %.2f €", calcul.montantSouhaite),
-                style = MaterialTheme.typography.bodyMedium
+                text = "À ANNONCER",
+                color = TealPrimary,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold
             )
+
             Text(
-                text = String.format(Locale.FRANCE, "Litres : %.2f L", calcul.litres),
-                style = MaterialTheme.typography.bodyMedium
+                text = String.format(Locale.FRANCE, "%.2f €", calcul.montantAAnnoncer),
+                color = TealPrimary,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
             )
+
+            Spacer(modifier = Modifier.height(2.dp))
+
             Text(
-                text = String.format(Locale.FRANCE, "Montant à annoncer : %.2f €", calcul.montantAAnnoncer),
-                style = MaterialTheme.typography.bodyMedium
+                text = String.format(Locale.FRANCE, "Souhaité : %.2f €", calcul.montantSouhaite),
+                color = OffWhite.copy(alpha = 0.8f),
+                fontSize = 12.sp
+            )
+
+            Text(
+                text = String.format(Locale.FRANCE, "Volume : %.2f L", calcul.litres),
+                color = OffWhite.copy(alpha = 0.6f),
+                fontSize = 11.sp
             )
         }
     }
