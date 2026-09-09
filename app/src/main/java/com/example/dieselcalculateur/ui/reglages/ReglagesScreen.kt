@@ -145,6 +145,14 @@ fun ReglagesScreen(
                                 color = MaterialTheme.colorScheme.secondary,
                                 style = MaterialTheme.typography.bodyMedium
                             )
+                            if (!context.packageManager.canRequestPackageInstalls()) {
+                                Text(
+                                    "Autorisation d'installation requise",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.padding(bottom = 4.dp)
+                                )
+                            }
                             Button(
                                 onClick = {
                                     if (!context.packageManager.canRequestPackageInstalls()) {
@@ -158,19 +166,28 @@ fun ReglagesScreen(
                                 },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("Télécharger et installer")
+                                Text(if (context.packageManager.canRequestPackageInstalls()) "Télécharger et installer" else "Autoriser l'installation")
                             }
                         }
                     }
                     is UpdateState.Downloading -> {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Téléchargement : ${state.progress}%", style = MaterialTheme.typography.bodySmall)
-                            LinearProgressIndicator(
-                                progress = { state.progress / 100f },
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                                color = MaterialTheme.colorScheme.secondary,
-                                trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                            )
+                            if (state.progress >= 0) {
+                                Text("Téléchargement : ${state.progress}%", style = MaterialTheme.typography.bodySmall)
+                                LinearProgressIndicator(
+                                    progress = { state.progress / 100f },
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                )
+                            } else {
+                                Text("Téléchargement en cours...", style = MaterialTheme.typography.bodySmall)
+                                LinearProgressIndicator(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                )
+                            }
                         }
                     }
                     is UpdateState.ReadyToInstall -> {

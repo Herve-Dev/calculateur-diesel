@@ -1,0 +1,2111 @@
+openapi: 3.0.0
+info:
+  title: Fuel Prices API
+  description: >
+    RESTful API providing data on fuel stations, available fuels, and pump prices across France.<br/>
+    The data is sourced from:<br/>
+    - <a href="https://www.prix-carburants.gouv.fr/rubrique/opendata/" target="_blank">prix-carburants.gouv.fr</a> - detailed French station and price data,<br/>
+    - <a href="https://www.ecologie.gouv.fr/politiques-publiques/prix-produits-petroliers" target="_blank">ecologie.gouv.fr</a> - official French aggregated statistics.<br/>
+    Additional Swagger documents are available for data subsets such as aggregated oil data and raw station data.
+  version: '1.0'
+  contact:
+    name: API Support
+    url: http://www.example.com/support
+    email: contact@2aaz.fr
+servers:
+  - url: /
+tags:
+  - name: Fuels
+    description: >
+      Reference data for road fuels.<br/>
+      Each fuel entry includes the fuel type (e.g. D, E, G) and standardized labeling codes (e.g. "B5", "E10", "LPG") in compliance with European regulations (Directive 2014/94/EU and EN 16942).
+  - name: FuelPrices
+    description: >
+      National average prices for road fuels.<br/>
+      Prices are aggregated by time period (e.g., weekly, monthly).<br/>
+      See also the <a href="?urls.primaryName=Oil%20prices%20API%20(FR%20%26%20brut)">dedicated Swagger</a> for oil price details.
+  - name: Brands
+    description: >
+      Reference data for fuel station brands.
+  - name: Stations
+    description: >
+      Detailed data about fuel stations, including brand, location, available services, fuel types and prices.
+  - name: Stations (opendata format)
+    description: >
+      Raw station data in the original open data format provided by the French government.<br/>
+      See also the <a href="?urls.primaryName=Fuel%20prices%20API%20(prix-carburants)%20-%20Opendata%20format">dedicated Swagger</a> for format details.
+components:
+  schemas:
+    Fuel:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+          xml:
+            attribute: true
+        name:
+          type: string
+        short_name:
+          type: string
+        type:
+          type: string
+          enum:
+            - D
+            - E
+            - G
+        picto:
+          type: string
+      xml:
+        name: Fuel
+      example:
+        id: 1
+        name: Gazole
+        short_name: Gazole
+        type: D
+        picto: B7
+    FuelPrice:
+      type: object
+      properties:
+        fuel:
+          type: integer
+          format: int32
+          xml:
+            attribute: true
+        period:
+          type: string
+          xml:
+            attribute: true
+        Fuel:
+          $ref: '#/components/schemas/Fuel'
+        Period:
+          $ref: '#/components/schemas/Period'
+        PriceHTT:
+          $ref: '#/components/schemas/Price'
+        PriceTTC:
+          $ref: '#/components/schemas/Price'
+      xml:
+        name: FuelPrice
+      example:
+        fuel: 1
+        period: 2024
+        PriceHTT:
+          value: 0.882
+          text: 0.882 €/L
+        PriceTTC:
+          value: 1.986
+          text: 1.986 €/L
+    Brand:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+          xml:
+            attribute: true
+        name:
+          type: string
+        short_name:
+          type: string
+        nb_stations:
+          type: integer
+          format: int32
+      xml:
+        name: Brand
+      example:
+        id: 1
+        name: TheBrandName
+        short_name: Brand
+        nb_stations: 42
+    Station:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+          xml:
+            attribute: true
+        Brand:
+          $ref: '#/components/schemas/Brand'
+        type:
+          type: string
+          enum:
+            - R
+            - A
+        name:
+          type: string
+        Address:
+          type: object
+          properties:
+            street_line:
+              type: string
+            city_line:
+              type: string
+        Fuels:
+          type: array
+          items:
+            $ref: '#/components/schemas/StationFuelPrice'
+          xml:
+            name: Fuels
+            wrapped: true
+        LastUpdate:
+          $ref: '#/components/schemas/DateTime'
+      xml:
+        name: Station
+    StationD:
+      allOf:
+        - $ref: '#/components/schemas/Station'
+        - type: object
+          properties:
+            Distance:
+              $ref: '#/components/schemas/Length'
+      xml:
+        name: Station
+    StationAggregation:
+      type: object
+      description: >
+        Aggregated cluster of stations, returned when the `aggregate` query parameter is provided.
+        The marker position (Coordinates) is the centroid (average position) of all stations in the cluster.
+      properties:
+        code:
+          type: string
+          description: >
+            Grouping key — format depends on aggregate type:<br/>
+            `cog:*` → administrative code (e.g. department `"75"`, region `"11"`);<br/>
+            `grid:N` → SW corner of the cell as `"lat,lon"` (e.g. `"48.5,2.1"`).
+        Coordinates:
+          type: object
+          description: Centroid of the cluster (average position of all stations).
+          properties:
+            '@latitude':
+              type: number
+              format: double
+            '@longitude':
+              type: number
+              format: double
+        nb_stations:
+          type: integer
+          format: int32
+          description: Number of stations in this cluster.
+        min_price:
+          type: number
+          format: double
+          nullable: true
+          description: >
+            Lowest fuel price (any fuel type) found across all stations in this cluster.
+            `null` if no price data is available.
+      xml:
+        name: StationAggregation
+      example:
+        code: "75"
+        Coordinates:
+          '@latitude': 48.859
+          '@longitude': 2.347
+        nb_stations: 342
+        min_price: 1.759
+    StationFuelPrice:
+      allOf:
+        - $ref: '#/components/schemas/Fuel'
+        - type: object
+          properties:
+            Update:
+              $ref: '#/components/schemas/DateTime'
+            rupture:
+              type: boolean
+            Price:
+              $ref: '#/components/schemas/Price'
+      xml:
+        name: Fuel
+      example:
+        id: 1
+        type: D
+        name: Gazole
+        short_name: Gazole
+        picto: B7
+        Update:
+          value: '2022-10-10T16:10:07Z'
+          text: 10/10/2022 16:10:07
+        rupture: false
+        Price:
+          value: 1.986
+          text: 1.986 €/L
+    Length:
+      type: object
+      properties:
+        value:
+          type: number
+          description: Length in meter.
+        text:
+          type: string
+          description: Formated Length according to requested units.
+      example:
+        value: 2674
+        text: 2.67 km
+    DateTime:
+      type: object
+      properties:
+        value:
+          type: string
+          format: date-time
+        text:
+          type: string
+          description: Formated DateTime according to requested format.
+    Period:
+      type: object
+      properties:
+        year:
+          type: number
+        month:
+          type: number
+        week:
+          type: number
+        text:
+          type: string
+          description: Formated Period.
+    Price:
+      type: object
+      properties:
+        value:
+          type: number
+        currency:
+          type: string
+        unit:
+          type: string
+        text:
+          type: string
+          description: "Formatted price string (3 decimal places for fuel prices, e.g. '1.749 €/L')"
+    Select2:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                format: int32
+              text:
+                type: string
+    Select2paginated:
+      allOf:
+        - $ref: '#/components/schemas/Select2'
+        - type: object
+          properties:
+            pagination:
+              type: object
+              properties:
+                more:
+                  type: boolean
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+          xml:
+            attribute: true
+        message:
+          type: string
+    Error406:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          properties:
+            header:
+              type: string
+            value:
+              type: string
+            acceptables:
+              type: array
+              items:
+                type: string
+                xml:
+                  name: acceptable
+              xml:
+                name: acceptables
+                wrapped: true
+      xml:
+        name: Error
+  parameters:
+    aggregate:
+      name: aggregate
+      in: query
+      required: false
+      description: >
+        When provided, groups stations into clusters and returns `StationAggregation` objects instead of `Station` objects.<br/>
+        Pagination is not applied in aggregate mode (full result set is always returned).<br/>
+        The marker of each cluster is placed at the centroid (average position) of its stations.<br/>
+        <br/>
+        Format: `type:resolution`. Supported values:<br/>
+        - `cog:region` / `cog:reg` / `region` — group by administrative region<br/>
+        - `cog:departement` / `cog:dep` / `departement` — group by administrative departement<br/>
+        - `cog:arrondissement` / `cog:arr` / `arrondissement` — group by administrative arrondissement<br/>
+        - `grid:N` — group by N×N degree grid cell (e.g. `grid:1`, `grid:0.5`, `grid:0.1`)<br/>
+        - `h3:R` — group by H3 hexagonal cell at resolution R, 0–15 (reserved — not yet available)
+      schema:
+        type: string
+        example: cog:departement
+  securitySchemes:
+    ApiKeyAuth1:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: prefix key with "Key " keyword
+    ApiKeyAuth2:
+      type: apiKey
+      in: query
+      name: key
+    BasicAuth:
+      type: http
+      scheme: basic
+  responses:
+    '400':
+      description: 'Bad Request : Query parameters are invalid'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+        application/xml:
+          schema:
+            $ref: '#/components/schemas/Error'
+        application/yaml:
+          schema:
+            $ref: '#/components/schemas/Error'
+    '401':
+      description: 'Unauthorized : Authentication not provided or incorrect'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+        application/xml:
+          schema:
+            $ref: '#/components/schemas/Error'
+        application/yaml:
+          schema:
+            $ref: '#/components/schemas/Error'
+    '403':
+      description: 'Forbidden : Authentication accepted but access to resource denied'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+        application/xml:
+          schema:
+            $ref: '#/components/schemas/Error'
+        application/yaml:
+          schema:
+            $ref: '#/components/schemas/Error'
+    '404':
+      description: 'Not Found : The specified resource could not be found'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+        application/xml:
+          schema:
+            $ref: '#/components/schemas/Error'
+        application/yaml:
+          schema:
+            $ref: '#/components/schemas/Error'
+    '405':
+      description: 'Method Not Allowed : The request method is not allowed'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+        application/xml:
+          schema:
+            $ref: '#/components/schemas/Error'
+        application/yaml:
+          schema:
+            $ref: '#/components/schemas/Error'
+    '406':
+      description: 'Not Acceptable : Accept headers cannot be satisfied'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error406'
+        application/xml:
+          schema:
+            $ref: '#/components/schemas/Error406'
+        application/yaml:
+          schema:
+            $ref: '#/components/schemas/Error406'
+    '416':
+      description: 'Range Not Satisfiable : Invalid range header'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+        application/xml:
+          schema:
+            $ref: '#/components/schemas/Error'
+        application/yaml:
+          schema:
+            $ref: '#/components/schemas/Error'
+    '429':
+      description: 'Too Many Request : The number of calls exceeds the limit authorized by your subscription'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+        application/xml:
+          schema:
+            $ref: '#/components/schemas/Error'
+        application/yaml:
+          schema:
+            $ref: '#/components/schemas/Error'
+    '500':
+      description: 'Internal Server Error : Unexpected server error'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+        application/xml:
+          schema:
+            $ref: '#/components/schemas/Error'
+        application/yaml:
+          schema:
+            $ref: '#/components/schemas/Error'
+paths:
+  /fuel/{id}:
+    get:
+      description: Returns fuel data
+      tags:
+        - Fuels
+      parameters:
+        - name: id
+          description: Numeric ID of the fuel to get
+          in: path
+          schema:
+            type: integer
+          required: true
+      responses:
+        '200':
+          description: Fuel Data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Fuel'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Fuel'
+            application/yaml:
+              schema:
+                $ref: '#/components/schemas/Fuel'
+        '400':
+          $ref: '#/components/responses/400'
+        '404':
+          $ref: '#/components/responses/404'
+        '405':
+          $ref: '#/components/responses/405'
+        '406':
+          $ref: '#/components/responses/406'
+        '429':
+          $ref: '#/components/responses/429'
+  /fuels/:
+    get:
+      description: Returns fuels list
+      tags:
+        - Fuels
+      security:
+        - ApiKeyAuth1: []
+        - ApiKeyAuth2: []
+        - BasicAuth: []
+      parameters:
+        - name: q
+          description: query field
+          in: query
+          schema:
+            type: string
+          required: false
+        - name: types
+          description: filter on fuel types (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - D
+                - E
+                - G
+          required: false
+          explode: false
+      responses:
+        '200':
+          description: Fuels Data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Fuel'
+                example:
+                  - id: 1
+                    name: Gazole
+                    short_name: Gazole
+                    type: D
+                    picto: B7
+                  - id: 2
+                    name: Super Sans Plomb 95
+                    short_name: SP95
+                    type: E
+                    picto: E5
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Fuel'
+                xml:
+                  name: Fuels
+                  wrapped: true
+                example:
+                  - id: 1
+                    name: Gazole
+                    short_name: Gazole
+                    type: D
+                    picto: B7
+                  - id: 2
+                    name: Super Sans Plomb 95
+                    short_name: SP95
+                    type: E
+                    picto: E5
+            application/yaml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Fuel'
+                example:
+                  - id: 1
+                    name: Gazole
+                    short_name: Gazole
+                    type: D
+                    picto: B7
+                  - id: 2
+                    name: Super Sans Plomb 95
+                    short_name: SP95
+                    type: E
+                    picto: E5
+            application/select2+json:
+              schema:
+                $ref: '#/components/schemas/Select2'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '405':
+          $ref: '#/components/responses/405'
+        '406':
+          $ref: '#/components/responses/406'
+        '416':
+          $ref: '#/components/responses/416'
+        '429':
+          $ref: '#/components/responses/429'
+  /fuel/{fid}/price/{period}:
+    get:
+      description: Returns fuel price (average on period)
+      tags:
+        - FuelPrices
+      security:
+        - ApiKeyAuth1: []
+        - ApiKeyAuth2: []
+        - BasicAuth: []
+      parameters:
+        - name: fid
+          description: Numeric ID of the fuel
+          in: path
+          schema:
+            type: integer
+          required: true
+        - name: period
+          description: 'Period code (possible formats are year: yyyy (2024), month: yyyy-mm (2024-01), week: yyyyWww (2024W42))'
+          in: path
+          schema:
+            type: string
+          required: true
+        - name: responseFields
+          description: child data to include
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - Fuel
+                - Period
+                - PriceHTT
+                - PriceTTC
+          required: false
+          explode: false
+      responses:
+        '200':
+          description: Fuel Price
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FuelPrice'
+              example:
+                fuel: 1
+                period: 2024-01
+                PriceHTT:
+                  value: 0.99
+                  text: 0.990 €/L
+                PriceTTC:
+                  value: 1.42
+                  text: 1.420 €/L
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/FuelPrice'
+              example:
+                fuel: 1
+                period: 2024-01
+                PriceHTT:
+                  value: 0.99
+                  text: 0.990 €/L
+                PriceTTC:
+                  value: 1.42
+                  text: 1.420 €/L
+            application/yaml:
+              schema:
+                $ref: '#/components/schemas/FuelPrice'
+              example:
+                fuel: 1
+                period: 2024-01
+                PriceHTT:
+                  value: 0.99
+                  text: 0.990 €/L
+                PriceTTC:
+                  value: 1.42
+                  text: 1.420 €/L
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '405':
+          $ref: '#/components/responses/405'
+        '406':
+          $ref: '#/components/responses/406'
+        '429':
+          $ref: '#/components/responses/429'
+  /brand/{id}:
+    get:
+      description: Returns brand data
+      tags:
+        - Brands
+      parameters:
+        - name: id
+          description: Numeric ID of the brand to get
+          in: path
+          schema:
+            type: integer
+          required: true
+      responses:
+        '200':
+          description: Brand Data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Brand'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Brand'
+            application/yaml:
+              schema:
+                $ref: '#/components/schemas/Brand'
+        '400':
+          $ref: '#/components/responses/400'
+        '404':
+          $ref: '#/components/responses/404'
+        '405':
+          $ref: '#/components/responses/405'
+        '406':
+          $ref: '#/components/responses/406'
+        '429':
+          $ref: '#/components/responses/429'
+  /brands/:
+    get:
+      description: Returns brands list
+      tags:
+        - Brands
+      security:
+        - ApiKeyAuth1: []
+        - ApiKeyAuth2: []
+        - BasicAuth: []
+      parameters:
+        - name: q
+          description: query field
+          in: query
+          schema:
+            type: string
+          required: false
+        - name: Range
+          description: 'Range of data to return (brand : in number of elements (default 10, max 20)'
+          in: header
+          schema:
+            type: string
+            pattern: ^brand=\d+-\d+$
+          required: false
+      responses:
+        '200':
+          description: Brand Data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Brand'
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Brand'
+                xml:
+                  name: Brands
+                  wrapped: true
+            application/yaml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Brand'
+            application/select2+json:
+              schema:
+                $ref: '#/components/schemas/Select2paginated'
+        '206':
+          description: Brand Data (partial result)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Brand'
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Brand'
+                xml:
+                  name: Brands
+                  wrapped: true
+            application/yaml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Brand'
+            application/select2+json:
+              schema:
+                $ref: '#/components/schemas/Select2paginated'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '405':
+          $ref: '#/components/responses/405'
+        '406':
+          $ref: '#/components/responses/406'
+        '416':
+          $ref: '#/components/responses/416'
+        '429':
+          $ref: '#/components/responses/429'
+  /station/{id}:
+    get:
+      description: Returns station data
+      tags:
+        - Stations
+      parameters:
+        - name: id
+          description: Numeric ID of the station to get
+          in: path
+          schema:
+            type: integer
+          required: true
+      responses:
+        '200':
+          description: Station Data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Station'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Station'
+            application/yaml:
+              schema:
+                $ref: '#/components/schemas/Station'
+        '400':
+          $ref: '#/components/responses/400'
+        '404':
+          $ref: '#/components/responses/404'
+        '405':
+          $ref: '#/components/responses/405'
+        '406':
+          $ref: '#/components/responses/406'
+        '429':
+          $ref: '#/components/responses/429'
+  /stations/:
+    get:
+      description: Returns stations list
+      tags:
+        - Stations
+      security:
+        - ApiKeyAuth1: []
+        - ApiKeyAuth2: []
+        - BasicAuth: []
+      parameters:
+        - name: q
+          description: query field (required with 2 characters unless the brand or department is specified)
+          in: query
+          schema:
+            type: string
+          required: true
+        - name: types
+          description: filter station types (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - R
+                - A
+          required: false
+          explode: false
+        - name: brands
+          description: filter on brand ids (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: integer
+          required: false
+          explode: false
+        - name: departments
+          description: filter on department codes (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: integer
+          required: false
+          explode: false
+        - name: postcodes
+          description: filter on postcodes (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              pattern: ^[a-zA-Z0-9]{5}$
+          required: false
+          explode: false
+        - name: fuels
+          description: filter on fuel ids (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: integer
+          required: false
+          explode: false
+        - name: responseFields
+          description: child data to include
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - Hours
+                - Services
+                - Fuels
+                - Price
+          required: false
+          explode: false
+        - name: Range
+          description: 'Range of data to return (station : in number of elements (default 10, max 20))'
+          in: header
+          schema:
+            type: string
+            pattern: ^station=\d+-\d+$
+          required: false
+      responses:
+        '200':
+          description: Station Data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Station'
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Station'
+                xml:
+                  name: Stations
+                  wrapped: true
+            application/yaml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Station'
+            application/select2+json:
+              schema:
+                $ref: '#/components/schemas/Select2paginated'
+        '206':
+          description: Station Data (partial result)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Station'
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Station'
+                xml:
+                  name: Stations
+                  wrapped: true
+            application/yaml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Station'
+            application/select2+json:
+              schema:
+                $ref: '#/components/schemas/Select2paginated'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '405':
+          $ref: '#/components/responses/405'
+        '406':
+          $ref: '#/components/responses/406'
+        '416':
+          $ref: '#/components/responses/416'
+        '429':
+          $ref: '#/components/responses/429'
+  /pdv/{id}:
+    get:
+      description: >
+        Returns station data in opendata format.<br/>
+        Also accessible via <code>/station/{id}?opendata=v1</code> or <code>/station/{id}?opendata=v2</code>.
+      tags:
+        - Stations (opendata format)
+      parameters:
+        - name: id
+          description: Numeric ID of the station to get
+          in: path
+          schema:
+            type: integer
+          required: true
+        - name: opendata
+          description: version of opendata format (default v1)
+          in: query
+          schema:
+            type: string
+            enum:
+              - v1
+              - v2
+            default: v1
+          required: false
+      responses:
+        '200':
+          description: Station Data
+          content:
+            application/json:
+              schema:
+                type: object
+            application/xml:
+              schema:
+                type: object
+                xml:
+                  name: pdv
+            application/yaml:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/400'
+        '404':
+          $ref: '#/components/responses/404'
+        '405':
+          $ref: '#/components/responses/405'
+        '406':
+          $ref: '#/components/responses/406'
+        '429':
+          $ref: '#/components/responses/429'
+  /pdv_liste/:
+    get:
+      description: >
+        Returns station list in opendata format.<br/>
+        Also accessible via <code>/stations/?opendata=v1</code> or <code>/stations/?opendata=v2</code>.
+      tags:
+        - Stations (opendata format)
+      security:
+        - ApiKeyAuth1: []
+        - ApiKeyAuth2: []
+        - BasicAuth: []
+      parameters:
+        - name: q
+          description: query field (required with 2 characters unless the brand or department is specified)
+          in: query
+          schema:
+            type: string
+          required: true
+        - name: opendata
+          description: version of opendata format (default v1)
+          in: query
+          schema:
+            type: string
+            enum:
+              - v1
+              - v2
+            default: v1
+          required: false
+        - name: Range
+          description: 'Range of data to return (station: in number of elements, default 10, max 20)'
+          in: header
+          schema:
+            type: string
+            pattern: ^station=\d+-\d+$
+          required: false
+      responses:
+        '200':
+          description: Station Data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+            application/xml:
+              schema:
+                type: array
+                items:
+                  type: object
+                  xml:
+                    name: pdv
+                xml:
+                  name: pdv_liste
+                  wrapped: true
+            application/yaml:
+              schema:
+                type: array
+                items:
+                  type: object
+        '206':
+          description: Station Data (partial result)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+            application/xml:
+              schema:
+                type: array
+                items:
+                  type: object
+                  xml:
+                    name: pdv
+                xml:
+                  name: pdv_liste
+                  wrapped: true
+            application/yaml:
+              schema:
+                type: array
+                items:
+                  type: object
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '405':
+          $ref: '#/components/responses/405'
+        '406':
+          $ref: '#/components/responses/406'
+        '416':
+          $ref: '#/components/responses/416'
+        '429':
+          $ref: '#/components/responses/429'
+  /stations/around/{latitude},{longitude}:
+    get:
+      description: Returns stations list around location
+      tags:
+        - Stations
+      security:
+        - ApiKeyAuth1: []
+        - ApiKeyAuth2: []
+        - BasicAuth: []
+      parameters:
+        - name: latitude
+          description: latitude in degree of point to search around
+          in: path
+          schema:
+            type: number
+          required: true
+        - name: longitude
+          description: longitude in degree of point to search around
+          in: path
+          schema:
+            type: number
+          required: true
+        - name: types
+          description: filter on station types (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - R
+                - A
+          required: false
+          explode: false
+        - name: brands
+          description: filter on brand ids (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: integer
+          required: false
+          explode: false
+        - name: departments
+          description: filter on department codes (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: integer
+          required: false
+          explode: false
+        - name: postcodes
+          description: filter on postcodes (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              pattern: ^[a-zA-Z0-9]{5}$
+          required: false
+          explode: false
+        - name: fuels
+          description: filter on fuel ids (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: integer
+          required: false
+          explode: false
+        - name: responseFields
+          description: child data to include
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - Hours
+                - Services
+                - Fuels
+                - Price
+          required: false
+          explode: false
+        - name: Range
+          description: 'Range of data to return (station : in number of elements (default 10, max 20) or m : distance around the point (max 10000 (10km))'
+          in: header
+          schema:
+            type: string
+            pattern: ^(station|m)=\d+-\d+$
+          required: false
+      responses:
+        '200':
+          description: Station Data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationD'
+            application/geo+json:
+              schema:
+                type: object
+                description: GeoJSON FeatureCollection (RFC 7946)
+                properties:
+                  type:
+                    type: string
+                    enum:
+                      - FeatureCollection
+                  features:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          enum:
+                            - Feature
+                        geometry:
+                          type: object
+                          properties:
+                            type:
+                              type: string
+                              enum:
+                                - Point
+                            coordinates:
+                              type: array
+                              items:
+                                type: number
+                              description: '[longitude, latitude]'
+                        properties:
+                          $ref: '#/components/schemas/StationD'
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationD'
+                xml:
+                  name: Stations
+                  wrapped: true
+            application/yaml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationD'
+        '206':
+          description: Station Data (partial result)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationD'
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationD'
+                xml:
+                  name: Stations
+                  wrapped: true
+            application/yaml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationD'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '405':
+          $ref: '#/components/responses/405'
+        '406':
+          $ref: '#/components/responses/406'
+        '416':
+          $ref: '#/components/responses/416'
+        '429':
+          $ref: '#/components/responses/429'
+  /stations/within/bbox/{latitude1},{longitude1};{latitude2},{longitude2}:
+    get:
+      description: Returns stations list within bounding box
+      tags:
+        - Stations
+      security:
+        - ApiKeyAuth1: []
+        - ApiKeyAuth2: []
+        - BasicAuth: []
+      parameters:
+        - name: latitude1
+          description: latitude in degree of first corner
+          in: path
+          schema:
+            type: number
+          required: true
+        - name: longitude1
+          description: longitude in degree of first corner
+          in: path
+          schema:
+            type: number
+          required: true
+        - name: latitude2
+          description: latitude in degree of opposite corner
+          in: path
+          schema:
+            type: number
+          required: true
+        - name: longitude2
+          description: longitude in degree of opposite corner
+          in: path
+          schema:
+            type: number
+          required: true
+        - name: types
+          description: filter on station types (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - R
+                - A
+          required: false
+          explode: false
+        - name: brands
+          description: filter on brand ids (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: integer
+          required: false
+          explode: false
+        - name: departments
+          description: filter on department codes (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: integer
+          required: false
+          explode: false
+        - name: postcodes
+          description: filter on postcodes (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              pattern: ^[a-zA-Z0-9]{5}$
+          required: false
+          explode: false
+        - name: fuels
+          description: filter on fuel ids (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: integer
+          required: false
+          explode: false
+        - name: responseFields
+          description: child data to include
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - Hours
+                - Services
+                - Fuels
+                - Price
+          required: false
+          explode: false
+        - name: Range
+          description: 'Range of data to return (station : in number of elements (default 10, max 20))'
+          in: header
+          schema:
+            type: string
+            pattern: ^station=\d+-\d+$
+          required: false
+      responses:
+        '200':
+          description: Station Data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationD'
+            application/geo+json:
+              schema:
+                type: object
+                description: GeoJSON FeatureCollection (RFC 7946)
+                properties:
+                  type:
+                    type: string
+                    enum:
+                      - FeatureCollection
+                  features:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          enum:
+                            - Feature
+                        geometry:
+                          type: object
+                          properties:
+                            type:
+                              type: string
+                              enum:
+                                - Point
+                            coordinates:
+                              type: array
+                              items:
+                                type: number
+                              description: '[longitude, latitude]'
+                        properties:
+                          $ref: '#/components/schemas/StationD'
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationD'
+                xml:
+                  name: Stations
+                  wrapped: true
+            application/yaml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationD'
+        '206':
+          description: Station Data (partial result)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationD'
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationD'
+                xml:
+                  name: Stations
+                  wrapped: true
+            application/yaml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationD'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '405':
+          $ref: '#/components/responses/405'
+        '406':
+          $ref: '#/components/responses/406'
+        '416':
+          $ref: '#/components/responses/416'
+        '429':
+          $ref: '#/components/responses/429'
+  /stations/within/circle/{latitude},{longitude};{radius}:
+    get:
+      description: Returns stations list within a circle around a location
+      tags:
+        - Stations
+      security:
+        - ApiKeyAuth1: []
+        - ApiKeyAuth2: []
+        - BasicAuth: []
+      parameters:
+        - name: latitude
+          description: latitude in degree of the center point
+          in: path
+          schema:
+            type: number
+          required: true
+        - name: longitude
+          description: longitude in degree of the center point
+          in: path
+          schema:
+            type: number
+          required: true
+        - name: radius
+          description: radius of the circle in meters (max 10000)
+          in: path
+          schema:
+            type: number
+          required: true
+        - name: types
+          description: filter on station types (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - R
+                - A
+          required: false
+          explode: false
+        - name: brands
+          description: filter on brand ids (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: integer
+          required: false
+          explode: false
+        - name: departments
+          description: filter on department codes (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: integer
+          required: false
+          explode: false
+        - name: postcodes
+          description: filter on postcodes (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              pattern: ^[a-zA-Z0-9]{5}$
+          required: false
+          explode: false
+        - name: fuels
+          description: filter on fuel ids (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: integer
+          required: false
+          explode: false
+        - name: responseFields
+          description: child data to include
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - Hours
+                - Services
+                - Fuels
+                - Price
+          required: false
+          explode: false
+        - name: Range
+          description: 'Range of data to return (station : in number of elements (default 10, max 20))'
+          in: header
+          schema:
+            type: string
+            pattern: ^station=\d+-\d+$
+          required: false
+      responses:
+        '200':
+          description: Station Data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationD'
+            application/geo+json:
+              schema:
+                type: object
+                description: GeoJSON FeatureCollection (RFC 7946)
+                properties:
+                  type:
+                    type: string
+                    enum:
+                      - FeatureCollection
+                  features:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          enum:
+                            - Feature
+                        geometry:
+                          type: object
+                          properties:
+                            type:
+                              type: string
+                              enum:
+                                - Point
+                            coordinates:
+                              type: array
+                              items:
+                                type: number
+                              description: '[longitude, latitude]'
+                        properties:
+                          $ref: '#/components/schemas/StationD'
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationD'
+                xml:
+                  name: Stations
+                  wrapped: true
+            application/yaml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationD'
+        '206':
+          description: Station Data (partial result)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationD'
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationD'
+                xml:
+                  name: Stations
+                  wrapped: true
+            application/yaml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationD'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '405':
+          $ref: '#/components/responses/405'
+        '406':
+          $ref: '#/components/responses/406'
+        '416':
+          $ref: '#/components/responses/416'
+        '429':
+          $ref: '#/components/responses/429'
+  /stations/?aggregate={aggregate}:
+    get:
+      description: >
+        Returns aggregated station clusters (find scope — full dataset with optional attribute filters).<br/>
+        The marker of each cluster is the centroid of its stations.
+      operationId: aggregateStations
+      tags:
+        - Stations
+      security:
+        - ApiKeyAuth1: []
+        - ApiKeyAuth2: []
+        - BasicAuth: []
+      parameters:
+        - $ref: '#/components/parameters/aggregate'
+        - name: types
+          description: filter on station types (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - R
+                - A
+          required: false
+          explode: false
+        - name: brands
+          description: filter on brand ids (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: integer
+          required: false
+          explode: false
+        - name: departments
+          description: filter on department codes (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          required: false
+          explode: false
+        - name: fuels
+          description: filter on fuel ids (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: integer
+          required: false
+          explode: false
+      responses:
+        '200':
+          description: Cluster Data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationAggregation'
+            application/geo+json:
+              schema:
+                type: object
+                description: GeoJSON FeatureCollection (RFC 7946)
+                properties:
+                  type:
+                    type: string
+                    enum:
+                      - FeatureCollection
+                  features:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          enum:
+                            - Feature
+                        geometry:
+                          type: object
+                          properties:
+                            type:
+                              type: string
+                              enum:
+                                - Point
+                            coordinates:
+                              type: array
+                              items:
+                                type: number
+                              description: '[longitude, latitude]'
+                        properties:
+                          $ref: '#/components/schemas/StationAggregation'
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationAggregation'
+                xml:
+                  name: Clusters
+                  wrapped: true
+            application/yaml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationAggregation'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '405':
+          $ref: '#/components/responses/405'
+        '406':
+          $ref: '#/components/responses/406'
+        '429':
+          $ref: '#/components/responses/429'
+  /stations/within/bbox/{latitude1},{longitude1};{latitude2},{longitude2}?aggregate={aggregate}:
+    get:
+      description: >
+        Returns aggregated station clusters within a bounding box.<br/>
+        The marker of each cluster is the centroid of its stations.
+      operationId: aggregateStationsWithinBbox
+      tags:
+        - Stations
+      security:
+        - ApiKeyAuth1: []
+        - ApiKeyAuth2: []
+        - BasicAuth: []
+      parameters:
+        - $ref: '#/components/parameters/aggregate'
+        - name: latitude1
+          description: latitude in degree of first corner
+          in: path
+          schema:
+            type: number
+          required: true
+        - name: longitude1
+          description: longitude in degree of first corner
+          in: path
+          schema:
+            type: number
+          required: true
+        - name: latitude2
+          description: latitude in degree of opposite corner
+          in: path
+          schema:
+            type: number
+          required: true
+        - name: longitude2
+          description: longitude in degree of opposite corner
+          in: path
+          schema:
+            type: number
+          required: true
+        - name: types
+          description: filter on station types (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - R
+                - A
+          required: false
+          explode: false
+        - name: brands
+          description: filter on brand ids (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: integer
+          required: false
+          explode: false
+        - name: fuels
+          description: filter on fuel ids (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: integer
+          required: false
+          explode: false
+      responses:
+        '200':
+          description: Cluster Data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationAggregation'
+            application/geo+json:
+              schema:
+                type: object
+                description: GeoJSON FeatureCollection (RFC 7946)
+                properties:
+                  type:
+                    type: string
+                    enum:
+                      - FeatureCollection
+                  features:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          enum:
+                            - Feature
+                        geometry:
+                          type: object
+                          properties:
+                            type:
+                              type: string
+                              enum:
+                                - Point
+                            coordinates:
+                              type: array
+                              items:
+                                type: number
+                              description: '[longitude, latitude]'
+                        properties:
+                          $ref: '#/components/schemas/StationAggregation'
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationAggregation'
+                xml:
+                  name: Clusters
+                  wrapped: true
+            application/yaml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationAggregation'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '405':
+          $ref: '#/components/responses/405'
+        '406':
+          $ref: '#/components/responses/406'
+        '429':
+          $ref: '#/components/responses/429'
+  /stations/within/circle/{latitude},{longitude};{radius}?aggregate={aggregate}:
+    get:
+      description: >
+        Returns aggregated station clusters within a circle.<br/>
+        The marker of each cluster is the centroid of its stations.
+      operationId: aggregateStationsWithinCircle
+      tags:
+        - Stations
+      security:
+        - ApiKeyAuth1: []
+        - ApiKeyAuth2: []
+        - BasicAuth: []
+      parameters:
+        - $ref: '#/components/parameters/aggregate'
+        - name: latitude
+          description: latitude in degree of the center point
+          in: path
+          schema:
+            type: number
+          required: true
+        - name: longitude
+          description: longitude in degree of the center point
+          in: path
+          schema:
+            type: number
+          required: true
+        - name: radius
+          description: radius of the circle in meters
+          in: path
+          schema:
+            type: integer
+          required: true
+        - name: types
+          description: filter on station types (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - R
+                - A
+          required: false
+          explode: false
+        - name: brands
+          description: filter on brand ids (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: integer
+          required: false
+          explode: false
+        - name: fuels
+          description: filter on fuel ids (comma separated list)
+          in: query
+          schema:
+            type: array
+            items:
+              type: integer
+          required: false
+          explode: false
+      responses:
+        '200':
+          description: Cluster Data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationAggregation'
+            application/geo+json:
+              schema:
+                type: object
+                description: GeoJSON FeatureCollection (RFC 7946)
+                properties:
+                  type:
+                    type: string
+                    enum:
+                      - FeatureCollection
+                  features:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          enum:
+                            - Feature
+                        geometry:
+                          type: object
+                          properties:
+                            type:
+                              type: string
+                              enum:
+                                - Point
+                            coordinates:
+                              type: array
+                              items:
+                                type: number
+                              description: '[longitude, latitude]'
+                        properties:
+                          $ref: '#/components/schemas/StationAggregation'
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationAggregation'
+                xml:
+                  name: Clusters
+                  wrapped: true
+            application/yaml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StationAggregation'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '405':
+          $ref: '#/components/responses/405'
+        '406':
+          $ref: '#/components/responses/406'
+        '429':
+          $ref: '#/components/responses/429'
+  /opendata/{version}/instantane:
+    get:
+      description: Generate file instantane v1 as original service for retrocompatibility
+      tags:
+        - Stations (opendata format)
+      parameters:
+        - name: version
+          description: version of opendata format
+          in: path
+          schema:
+            type: string
+            enum:
+              - v1
+          required: true
+      responses:
+        '200':
+          description: Opendata file
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary

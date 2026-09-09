@@ -94,7 +94,12 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
                                 totalRead += read
                                 if (totalSize > 0) {
                                     val progress = ((totalRead * 100) / totalSize).toInt()
-                                    _updateState.value = UpdateState.Downloading(progress)
+                                    if (progress % 5 == 0) { // On évite de spammer trop le StateFlow
+                                        _updateState.value = UpdateState.Downloading(progress)
+                                    }
+                                } else {
+                                    // Taille inconnue, on affiche une progression indéterminée via un flag spécial ou 0
+                                    _updateState.value = UpdateState.Downloading(-1)
                                 }
                             }
                         }
@@ -103,6 +108,8 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 downloadedApk = file
                 _updateState.value = UpdateState.ReadyToInstall
+                // Petit délai pour laisser l'UI passer en ReadyToInstall avant de lancer l'Intent
+                kotlinx.coroutines.delay(500)
                 installerApk()
             } catch (e: Exception) {
                 _updateState.value = UpdateState.Error("Erreur de téléchargement : ${e.localizedMessage}")
