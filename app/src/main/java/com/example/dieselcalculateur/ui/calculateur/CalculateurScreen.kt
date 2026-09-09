@@ -23,13 +23,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.dieselcalculateur.data.local.CalculEntity
 import com.example.dieselcalculateur.data.model.CalculResult
 import com.example.dieselcalculateur.data.model.StationCarburant
 import com.example.dieselcalculateur.data.remote.CitySuggestion
+import com.example.dieselcalculateur.ui.components.*
 import com.example.dieselcalculateur.ui.stations.LocationPermissionHandler
+import com.example.dieselcalculateur.ui.theme.AmberSecondary
+import com.example.dieselcalculateur.ui.theme.OffWhite
+import com.example.dieselcalculateur.ui.theme.TealPrimary
 import kotlinx.coroutines.delay
 import java.text.DateFormat
 import java.util.Date
@@ -93,43 +98,43 @@ fun CalculateurScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                OutlinedTextField(
+                // Formulaire de saisie réutilisant GlowTextField
+                GlowTextField(
                     value = montantSouhaite,
                     onValueChange = viewModel::onMontantSouhaiteChange,
-                    label = { Text("Montant réellement souhaité (€)") },
-                    modifier = Modifier.fillMaxWidth(),
+                    label = "Montant réellement souhaité",
+                    placeholder = "ex: 50.00",
+                    suffix = "€",
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true
                 )
 
-                OutlinedTextField(
+                GlowTextField(
                     value = prixAffiche,
                     onValueChange = viewModel::onPrixAfficheChange,
-                    label = { Text("Prix affiché à la pompe (€/L)") },
-                    modifier = Modifier.fillMaxWidth(),
+                    label = "Prix affiché à la pompe",
+                    placeholder = "ex: 1.759",
+                    suffix = "€ / L",
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true
                 )
 
-                OutlinedTextField(
+                GlowTextField(
                     value = prixPlafonne,
                     onValueChange = viewModel::onPrixPlafonneChange,
-                    label = { Text("Prix plafonné de la carte (€/L)") },
-                    modifier = Modifier.fillMaxWidth(),
+                    label = "Prix plafonné de la carte",
+                    placeholder = "ex: 1.689",
+                    suffix = "€ / L",
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true
                 )
 
-                // Affichage du résultat ou de l'erreur
+                // Affichage du résultat ou de l'erreur avec GlowCard & PillButton
                 when (val res = resultat) {
                     is CalculResult.Success -> {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(20.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)
-                            ),
-                            elevation = CardDefaults.cardElevation(0.dp)
+                        GlowCard(
+                            type = GlowCardType.TEAL,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(
                                 modifier = Modifier
@@ -139,56 +144,55 @@ fun CalculateurScreen(
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Text(
-                                    text = "À ANNONCER :",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    text = "À ANNONCER AU CAISSIER :",
+                                    color = OffWhite.copy(alpha = 0.7f),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
-                                    text = String.format(java.util.Locale.FRANCE, "%.2f €", res.montantAAnnoncer),
-                                    style = MaterialTheme.typography.displayLarge,
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                    text = String.format(Locale.FRANCE, "%.2f €", res.montantAAnnoncer),
+                                    color = TealPrimary,
+                                    fontSize = 32.sp,
+                                    fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = String.format(java.util.Locale.FRANCE, "%.2f L", res.litres),
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    text = String.format(Locale.FRANCE, "Volume : %.2f L", res.litres),
+                                    color = OffWhite,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Medium
                                 )
-                                Text(
-                                    text = String.format(java.util.Locale.FRANCE, "Économie : %.2f €", res.economie),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
+                                if (res.economie > 0) {
+                                    Text(
+                                        text = String.format(Locale.FRANCE, "Économie : %.2f €", res.economie),
+                                        color = AmberSecondary,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+
                                 Row(
-                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 12.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
-                                    Button(
+                                    PillButton(
+                                        text = if (confirmationVisible) "✓ Enregistré" else "Enregistrer",
+                                        variant = PillButtonVariant.PRIMARY,
                                         onClick = {
                                             viewModel.enregistrerCalcul()
                                             confirmationVisible = true
                                         },
                                         enabled = !confirmationVisible,
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.secondary,
-                                            contentColor = MaterialTheme.colorScheme.onSecondary,
-                                            disabledContainerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f),
-                                            disabledContentColor = MaterialTheme.colorScheme.onSecondary
-                                        ),
                                         modifier = Modifier.weight(1f)
-                                    ) {
-                                        Text(if (confirmationVisible) "✓ Enregistré" else "Enregistrer")
-                                    }
+                                    )
 
-                                    OutlinedButton(
+                                    PillButton(
+                                        text = "Nouveau",
+                                        variant = PillButtonVariant.SECONDARY,
                                         onClick = viewModel::nouveauCalcul,
-                                        colors = ButtonDefaults.outlinedButtonColors(
-                                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                        ),
                                         modifier = Modifier.weight(1f)
-                                    ) {
-                                        Text("Nouveau")
-                                    }
+                                    )
                                 }
                             }
                         }
@@ -205,7 +209,7 @@ fun CalculateurScreen(
                     null -> { /* Rien ne s'affiche si aucun calcul n'a été tenté */ }
                 }
 
-                // Section Stations Proches
+                // Section Stations Proches (inchangée à cette étape)
                 Text(
                     text = "Stations à proximité",
                     style = MaterialTheme.typography.titleMedium,
@@ -302,6 +306,7 @@ fun CalculateurScreen(
                     }
                 }
 
+                // Section Historique (inchangée à cette étape)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -446,7 +451,6 @@ private fun StationItem(
 
 private fun formatDateIso(isoString: String): String {
     return try {
-        // Format typique API: 2026-09-04T23:51:00+00:00
         val datePart = isoString.split("T").firstOrNull() ?: isoString
         val parts = datePart.split("-")
         if (parts.size == 3) {
