@@ -127,7 +127,7 @@ Write-Host ""
 Write-Host "Verification du build local (assembleRelease)..." -ForegroundColor Cyan
 
 # Configuration du JBR pour Gradle
-$env:JAVA_HOME = 'G:\Android\Android Studio\jbr'
+$env:JAVA_HOME = 'G:\Android 2\jbr'
 $env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
 
 Write-Host "> .\gradlew.bat assembleRelease" -ForegroundColor DarkGray
