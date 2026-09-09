@@ -2,6 +2,8 @@ package com.example.dieselcalculateur.ui.reglages
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.Icons
@@ -124,7 +126,8 @@ fun ReglagesScreen(
                             Text(
                                 state.message,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(horizontal = 8.dp)
                             )
                         }
                     }
@@ -140,13 +143,38 @@ fun ReglagesScreen(
                             )
                             Button(
                                 onClick = {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(state.downloadUrl))
-                                    context.startActivity(intent)
+                                    if (!context.packageManager.canRequestPackageInstalls()) {
+                                        val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                                            data = Uri.parse("package:${context.packageName}")
+                                        }
+                                        context.startActivity(intent)
+                                    } else {
+                                        updateViewModel.telechargerMiseAJour(state.downloadUrl)
+                                    }
                                 },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("Télécharger")
+                                Text("Télécharger et installer")
                             }
+                        }
+                    }
+                    is UpdateState.Downloading -> {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Téléchargement : ${state.progress}%", style = MaterialTheme.typography.bodySmall)
+                            LinearProgressIndicator(
+                                progress = { state.progress / 100f },
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                color = MaterialTheme.colorScheme.secondary,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                            )
+                        }
+                    }
+                    is UpdateState.ReadyToInstall -> {
+                        Button(
+                            onClick = { updateViewModel.installerApk() },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Installer maintenant")
                         }
                     }
                 }
