@@ -13,4 +13,4 @@
 .externalNativeBuild
 .cxx
 local.properties
-release.ps1
+/release.ps1

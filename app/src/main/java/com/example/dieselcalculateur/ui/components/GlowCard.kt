@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -45,15 +46,21 @@ fun GlowCard(
     }
 
     val isGlowing = type != GlowCardType.NEUTRAL || customGlowColor != null
+    val effectiveGlowRadius = if (isGlowing) glowRadius else 0.dp
+    val effectiveGlowAlpha = if (isGlowing) glowAlpha else 0f
+
+    // Marge de sécurité externe pour contenir le dessin du glow sans débordement hors écran
+    val glowMargin = if (isGlowing) (effectiveGlowRadius / 2) else 2.dp
 
     Box(
         modifier = modifier
+            .padding(glowMargin)
             .glowBorder(
                 color = borderGlowColor,
                 shape = shape,
                 borderWidth = borderWidth,
-                glowRadius = if (isGlowing) glowRadius else 0.dp,
-                glowAlpha = if (isGlowing) glowAlpha else 0f
+                glowRadius = effectiveGlowRadius,
+                glowAlpha = effectiveGlowAlpha
             )
             .background(DarkSurface, shape = shape)
             .clip(shape)

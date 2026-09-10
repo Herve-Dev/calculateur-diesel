@@ -27,6 +27,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
@@ -279,9 +280,11 @@ fun CalculateurScreen(
                         )
                     }
                     is StationsState.Success -> {
-                        val cheapestPrice = state.stations
-                            .mapNotNull { it.prixGazole }
-                            .minOrNull()
+                        val validPrices = state.stations.mapNotNull { it.prixGazole }
+                        val minPrice = validPrices.minOrNull()
+                        val countMinPrice = if (minPrice != null) validPrices.count { it == minPrice } else 0
+                        // Attribution du badge / glow ambre UNIQUEMENT si une seule station a le prix minimum
+                        val cheapestPrice = if (countMinPrice == 1) minPrice else null
 
                         LazyColumn(
                             modifier = Modifier
@@ -330,7 +333,7 @@ fun CalculateurScreen(
                     }
                 }
 
-                // Section Historique (Scroll Horizontal avec GlowCard - Phase 9.4)
+                // Section Historique (Scroll Horizontal avec GlowCard)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -432,6 +435,7 @@ private fun StationItem(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+            // Ligne d'en-tête : Nom + Badge "MOINS CHÈRE" + Prix
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -439,43 +443,52 @@ private fun StationItem(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.weight(1f)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.weight(1f, fill = false)
                 ) {
                     Text(
                         text = station.enseigne ?: "Station",
                         color = OffWhite,
                         fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
                     if (isCheapest) {
                         Box(
                             modifier = Modifier
                                 .background(AmberSecondary, shape = CircleShape)
-                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
                             Text(
                                 text = "MOINS CHÈRE",
                                 color = DarkBackground,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.ExtraBold
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                maxLines = 1
                             )
                         }
                     }
                 }
 
+                Spacer(modifier = Modifier.width(8.dp))
+
                 Text(
                     text = String.format(Locale.FRANCE, "%.3f €/L", station.prixGazole ?: 0.0),
                     color = if (isCheapest) AmberSecondary else TealPrimary,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
                 )
             }
 
             Text(
                 text = "${station.adresse}, ${station.codePostal ?: ""} ${station.ville ?: ""}",
                 color = OffWhite.copy(alpha = 0.65f),
-                fontSize = 13.sp
+                fontSize = 13.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
 
             Row(
@@ -483,29 +496,35 @@ private fun StationItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f, fill = false)) {
                     station.horaires?.let {
                         Text(
                             text = it,
                             color = TealPrimary,
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                     station.dateMiseAJour?.let {
                         Text(
                             text = "MàJ : ${formatDateIso(it)}",
                             color = OffWhite.copy(alpha = 0.45f),
-                            fontSize = 11.sp
+                            fontSize = 11.sp,
+                            maxLines = 1
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.width(8.dp))
 
                 Text(
                     text = String.format(Locale.FRANCE, "À %.1f km", station.distanceMetres / 1000.0),
                     color = OffWhite.copy(alpha = 0.8f),
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1
                 )
             }
         }
