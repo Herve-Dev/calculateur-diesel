@@ -17,7 +17,7 @@ class LocationHelper(private val context: Context) {
             // Tenter d'abord la dernière position connue (rapide, car en cache)
             var location: Location? = fusedLocationClient.lastLocation.await()
 
-            // Fallback : Demander une position fraîche si le cache est vide
+            // Fallback : Demander une position fraîche si le cache est vide (One-shot)
             if (location == null) {
                 location = fusedLocationClient.getCurrentLocation(
                     Priority.PRIORITY_HIGH_ACCURACY,

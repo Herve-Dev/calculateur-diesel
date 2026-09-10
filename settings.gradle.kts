@@ -24,3 +24,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "DieselCalculateur"
 include(":app")
+include(":core")
+include(":wear")

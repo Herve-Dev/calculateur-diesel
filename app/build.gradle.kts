@@ -30,7 +30,7 @@ android {
                 storeFile = file(path)
             }
             storePassword = System.getenv("KEYSTORE_PASSWORD")
-                ?: localProperties.getProperty("signing.keystore.password")
+                ?: localProperties.getProperty("signing.key.password")
             keyAlias = System.getenv("KEY_ALIAS")
                 ?: localProperties.getProperty("signing.key.alias")
             keyPassword = System.getenv("KEY_PASSWORD")
@@ -70,6 +70,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":core"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.fragment.ktx)

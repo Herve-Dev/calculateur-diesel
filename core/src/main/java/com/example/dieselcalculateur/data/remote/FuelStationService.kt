@@ -60,7 +60,7 @@ class FuelStationService {
     suspend fun searchStationsByText(
         query: String,
         fuelId: Int,
-        radiusMeters: Int // Utilisé pour le tri ou filtrage éventuel si on a une position
+        radiusMeters: Int
     ): List<StationCarburant> {
         return try {
             val stationsRaw = api.searchStations(query)
