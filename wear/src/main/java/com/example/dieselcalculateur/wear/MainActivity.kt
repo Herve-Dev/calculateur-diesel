@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -206,20 +207,42 @@ fun WearMainScreen(viewModel: WearViewModel) {
 
 @Composable
 fun StationWearItem(station: StationCarburant) {
+    val priceAndDistance = String.format(
+        Locale.FRANCE,
+        "%.3f €/L • %.1f km",
+        station.prixGazole ?: 0.0,
+        station.distanceMetres / 1000.0
+    )
+    val ville = station.ville
+
     Chip(
         label = {
             Text(
                 text = station.enseigne ?: "Station",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
-                maxLines = 1
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         },
         secondaryLabel = {
-            Text(
-                text = String.format(Locale.FRANCE, "%.3f €/L  •  %.1f km", station.prixGazole ?: 0.0, station.distanceMetres / 1000.0),
-                fontSize = 11.sp
-            )
+            Column {
+                Text(
+                    text = priceAndDistance,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (!ville.isNullOrBlank()) {
+                    Text(
+                        text = ville,
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colors.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
         },
         onClick = { },
         colors = ChipDefaults.secondaryChipColors(),
