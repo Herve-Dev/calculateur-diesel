@@ -30,13 +30,14 @@ import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
 import com.example.dieselcalculateur.data.model.CalculResult
 import com.example.dieselcalculateur.data.model.CalculateurLogic
 import com.example.dieselcalculateur.data.model.StationCarburant
+import com.example.dieselcalculateur.wear.theme.DieselCalculateurWearTheme
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme {
+            DieselCalculateurWearTheme {
                 val navController = rememberSwipeDismissableNavController()
                 val viewModel: WearViewModel = viewModel()
 
@@ -498,7 +499,7 @@ fun ResultatScreen(
                             text = "À ANNONCER AU CAISSIER",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colors.primary,
+                            color = MaterialTheme.colors.onSurfaceVariant,
                             modifier = Modifier.padding(top = 2.dp)
                         )
                     }
@@ -508,7 +509,7 @@ fun ResultatScreen(
                             text = String.format(Locale.FRANCE, "%.2f €", result.montantAAnnoncer),
                             fontSize = 26.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colors.primary,
+                            color = MaterialTheme.colors.secondary, // Ambre #F5C542
                             textAlign = TextAlign.Center
                         )
                     }
@@ -528,7 +529,7 @@ fun ResultatScreen(
                             Text(
                                 text = String.format(Locale.FRANCE, "Économie : %.2f €", result.economie),
                                 fontSize = 11.sp,
-                                color = MaterialTheme.colors.secondary,
+                                color = MaterialTheme.colors.primary, // Teal #2DD4BF
                                 textAlign = TextAlign.Center
                             )
                         }
