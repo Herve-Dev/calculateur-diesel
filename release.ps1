@@ -1,4 +1,4 @@
-# release.ps1 - Script d'automatisation de release pour DieselCalculateur
+# release.ps1 - Script d'automatisation de release pour DieselCalculateur (Téléphone)
 
 $ErrorActionPreference = "Stop"
 
@@ -126,9 +126,15 @@ Write-Host "Fichier $gradleFile mis a jour." -ForegroundColor Green
 Write-Host ""
 Write-Host "Verification du build local (assembleRelease)..." -ForegroundColor Cyan
 
-# Configuration du JBR pour Gradle
-$env:JAVA_HOME = 'G:\Android 2\jbr'
-$env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
+# Configuration du JBR pour Gradle (chemins Android Studio)
+if (Test-Path 'G:\Android 2\jbr') {
+    $env:JAVA_HOME = 'G:\Android 2\jbr'
+} elseif (Test-Path 'G:\Android\Android Studio\jbr') {
+    $env:JAVA_HOME = 'G:\Android\Android Studio\jbr'
+}
+if ($env:JAVA_HOME) {
+    $env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
+}
 
 Write-Host "> .\gradlew.bat assembleRelease" -ForegroundColor DarkGray
 .\gradlew.bat assembleRelease
