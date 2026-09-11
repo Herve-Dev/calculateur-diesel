@@ -40,4 +40,5 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     ksp(libs.androidx.room.compiler)
     implementation(libs.google.play.services.location)
+    implementation(libs.google.play.services.wearable)
 }

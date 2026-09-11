@@ -27,6 +27,7 @@ import androidx.wear.compose.material.*
 import androidx.wear.compose.navigation.SwipeDismissableNavHost
 import androidx.wear.compose.navigation.composable
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
+import com.example.dieselcalculateur.data.local.SyncedCalculResult
 import com.example.dieselcalculateur.data.model.CalculResult
 import com.example.dieselcalculateur.data.model.CalculateurLogic
 import com.example.dieselcalculateur.data.model.StationCarburant
@@ -53,8 +54,16 @@ class MainActivity : ComponentActivity() {
                                 val enseigne = Uri.encode(station.enseigne ?: "Station")
                                 val ville = Uri.encode(station.ville ?: "")
                                 navController.navigate("montant/$prix/$enseigne/$ville")
+                            },
+                            onLatestResultClick = {
+                                navController.navigate("latest_result")
                             }
                         )
+                    }
+
+                    composable("latest_result") {
+                        val latestResult by viewModel.latestSyncedResult.collectAsState()
+                        DernierResultatScreen(syncedResult = latestResult)
                     }
 
                     composable("montant/{prix}/{enseigne}/{ville}") { backStackEntry ->
@@ -105,10 +114,12 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun WearMainScreen(
     viewModel: WearViewModel,
-    onStationClick: (StationCarburant) -> Unit
+    onStationClick: (StationCarburant) -> Unit,
+    onLatestResultClick: () -> Unit
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
+    val latestSyncedResult by viewModel.latestSyncedResult.collectAsState()
     val listState = rememberScalingLazyListState()
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -163,6 +174,17 @@ fun WearMainScreen(
                     color = MaterialTheme.colors.primary,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
+            }
+
+            if (latestSyncedResult != null) {
+                item {
+                    CompactChip(
+                        label = { Text("⚡ Dernier résultat (Tél)", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+                        onClick = onLatestResultClick,
+                        colors = ChipDefaults.secondaryChipColors(),
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                }
             }
 
             when (val state = uiState) {
@@ -546,6 +568,105 @@ fun ResultatScreen(
                             modifier = Modifier.padding(horizontal = 12.dp)
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DernierResultatScreen(
+    syncedResult: SyncedCalculResult?
+) {
+    val listState = rememberScalingLazyListState()
+
+    Scaffold(
+        positionIndicator = {
+            PositionIndicator(scalingLazyListState = listState)
+        },
+        timeText = {
+            TimeText()
+        }
+    ) {
+        ScalingLazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            state = listState,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            item {
+                Text(
+                    text = "Dernier calcul (Tél)",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colors.primary,
+                    modifier = Modifier.padding(bottom = 2.dp)
+                )
+            }
+
+            if (syncedResult != null) {
+                if (syncedResult.enseigne.isNotBlank()) {
+                    item {
+                        Text(
+                            text = syncedResult.enseigne,
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colors.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                item {
+                    Text(
+                        text = "À ANNONCER AU CAISSIER",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colors.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+
+                item {
+                    Text(
+                        text = String.format(Locale.FRANCE, "%.2f €", syncedResult.montantAAnnoncer),
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colors.secondary, // Ambre #F5C542
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                item {
+                    Text(
+                        text = String.format(Locale.FRANCE, "Volume : %.2f L", syncedResult.litres),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colors.onBackground,
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                if (syncedResult.economie > 0) {
+                    item {
+                        Text(
+                            text = String.format(Locale.FRANCE, "Économie : %.2f €", syncedResult.economie),
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colors.primary, // Teal #2DD4BF
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            } else {
+                item {
+                    Text(
+                        text = "Aucun calcul synchronisé pour l'instant.",
+                        fontSize = 12.sp,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colors.onBackground,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                    )
                 }
             }
         }

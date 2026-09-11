@@ -44,5 +44,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.google.play.services.location)
+    implementation(libs.google.play.services.wearable)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

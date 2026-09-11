@@ -16,6 +16,7 @@ import com.example.dieselcalculateur.data.remote.CitySuggestion
 import com.example.dieselcalculateur.data.remote.FuelStationService
 import com.example.dieselcalculateur.data.remote.LocationHelper
 import com.example.dieselcalculateur.data.repository.CalculRepository
+import com.example.dieselcalculateur.util.WearDataSyncHelper
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -257,6 +258,15 @@ class CalculateurViewModel(application: Application) : AndroidViewModel(applicat
         if (resultat is CalculResult.Success) {
             viewModelScope.launch {
                 repository.insererCalcul(resultat.toEntity())
+                
+                // Envoi silencieux vers la montre via Wear Data Layer API
+                WearDataSyncHelper.syncLatestCalcul(
+                    context = getApplication(),
+                    montantAAnnoncer = resultat.montantAAnnoncer,
+                    litres = resultat.litres,
+                    economie = resultat.economie,
+                    montantSouhaite = _montantSouhaite.value.toDoubleOrNull() ?: 0.0
+                )
             }
         }
     }
