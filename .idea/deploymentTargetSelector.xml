@@ -15,10 +15,10 @@
       </SelectionState>
       <SelectionState runConfigName="wear">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-09-10T20:16:06.936058800Z">
+        <DropdownSelection timestamp="2026-09-11T14:22:18.052372200Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\Madimaka\.android\avd\Wear_OS_Large_Round.avd" />
+              <DeviceId pluginId="Default" identifier="serial=192.168.1.19:34057;connection=bf827f61" />
             </handle>
           </Target>
         </DropdownSelection>
